@@ -2,9 +2,9 @@
 
 set -e
 
-GOLANG_VERSION=${GOLANG_VERSION:-1.14.15}
+GO_VERSION=${GO_VERSION:-1.14.15}
 
-DOCKER_SCAN_SUGGEST=false docker build --build-arg GOLANG_VERSION=${GOLANG_VERSION} -t go-pkgs-dl .
+DOCKER_SCAN_SUGGEST=false docker build --build-arg GO_VERSION=${GO_VERSION} -t go-pkgs-dl .
 
 mkdir -p $PWD/dl
 
@@ -25,7 +25,7 @@ elif [[ "$1" == "test" ]]; then
 
     # test compiled module
     docker run --rm -ti -v $PWD/dl:/dl --network none go-pkgs-dl sh -c \
-                "/dl/go/go${GOLANG_VERSION}-test1.sh -h; /dl/go/go${GOLANG_VERSION}-test1.sh -m; /dl/go/go${GOLANG_VERSION}-test1.sh; \
+                "/dl/go/go${GO_VERSION}-test1.sh -h; /dl/go/go${GO_VERSION}-test1.sh -m; /dl/go/go${GO_VERSION}-test1.sh; \
                 echo 'package main' | godoctor godoc 2>/dev/null && echo '\033[32mtest is ok\033[0m'"
 
     # test build with module
@@ -49,7 +49,7 @@ func main() {
 }
 EOF
 ) | docker run --rm -i -v $PWD/dl:/dl --network none go-pkgs-dl sh -c "cat > /tmp/test.go ; \
-                cat /dl/go/go${GOLANG_VERSION}-test2.sh | sh; go build /tmp/test.go; ls -l test ; ./test"
+                cat /dl/go/go${GO_VERSION}-test2.sh | sh; go build /tmp/test.go; ls -l test ; ./test"
 
 elif [[ "$1" =~ "vscode" ]]; then
     docker run --rm -ti -v $PWD/dl:/dl ${list} go-pkgs-dl /main.sh $1
