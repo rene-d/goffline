@@ -20,15 +20,18 @@ elif [[ "$1" == "test" ]]; then
     docker run --rm -ti -v $PWD/dl:/dl go-pkgs-dl /main.sh test
 
     # # try to install godoctor with Internet connection    echo
-    echo "Testing Go get without Internet"
+    echo "Testing Go without Internet connection"
     echo
 
     # test compiled module
     docker run --rm -ti -v $PWD/dl:/dl --network none go-pkgs-dl sh -c \
-                "/dl/go/go${GO_VERSION}-test1.sh -h; /dl/go/go${GO_VERSION}-test1.sh -m; /dl/go/go${GO_VERSION}-test1.sh; \
-                echo 'package main' | godoctor godoc 2>/dev/null && echo '\033[32mtest is ok\033[0m'"
+                "/dl/go/go${GO_VERSION}-test1.sh -h;
+                 /dl/go/go${GO_VERSION}-test1.sh -i;
+                 /dl/go/go${GO_VERSION}-test1.sh -m;
+                 /dl/go/go${GO_VERSION}-test1.sh;
+                 hello && echo '\033[32mtest is ok\033[0m'"
 
-    # test build with module
+    # test build with module (in GOPATH mode)
     (cat <<'EOF'
 package main
 

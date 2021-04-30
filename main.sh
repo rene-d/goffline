@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-if [[ ! -f /.dockerenv ]]; then
+if [[ ! -f /.dockerenv ]] || [[ ! ${GOLANG_VERSION} ]]; then
     echo >&2 "Should be run into the container"
     exit 2
 fi
@@ -22,12 +22,15 @@ dl_111module()
     export GOPATH="/tmp/cache/${name}-111GOPATH"
     export GO111MODULE=${mode}
 
-    # get the modules twice
+    # get the modules twice (everything goes under $GOPATH)
     for i; do
         env GOARCH=arm64 go get $i
         env GOARCH=amd64 go get $i
     done
 
+    # by default,
+    # host arch binaries are into $GOPATH/bin/
+    # other arch binaries are into $GOPATH/bin/linux_<arch>/
     echo "Fixing bin dir with host arch"
     bin_arch=${GOPATH}/bin/$(go env GOHOSTOS)_$(go env GOHOSTARCH)
     rm -rf ${bin_arch}
@@ -37,6 +40,8 @@ dl_111module()
     echo "Make archive"
     tar -C "${GOPATH}" -c${compression}f /tmp/go-modules.tar .
 
+    local sha256=$(sha256sum -b < /tmp/go-modules.tar)
+
     local filename="$(go version | sed -nr 's/^.* (go[0-9\.]+) .*$/\1/p')-${name}.sh"
 
     echo -e "Write self-extracting script \033[1;31m${filename}\033[0m"
@@ -45,7 +50,11 @@ dl_111module()
     cat <<EOF > "${DESTDIR}/go/${filename}"
 #!/bin/sh
 if [ "\$1" = "-m" ]; then
-    echo $*
+    for i in "$@"; do echo "$i"; done
+    exit
+elif [ "\$1" = "-i" ]; then
+    echo $(date --iso-8601=minutes)
+    echo ${sha256}
     exit
 elif [ "\$1" = "-t" ]; then
     fn()
@@ -61,7 +70,8 @@ elif [ -n "\$1" ]; then
     echo "Usage: \$0 [option]"
     echo "  -x   extract to stdin"
     echo "  -t   list content"
-    echo "  -m   print modules list"
+    echo "  -i   print download date and SHA-256 of the *embedded* archive"
+    echo "  -m   print modules list"s
     exit
 else
     fn()
@@ -81,6 +91,9 @@ EOF
     base64 /tmp/go-modules.tar >> "${DESTDIR}/go/${filename}"
     echo '#EOF#' >> "${DESTDIR}/go/${filename}"
     chmod a+x "${DESTDIR}/go/${filename}"
+
+    cd "${DESTDIR}/go"
+    sha256sum -b "${filename}" > "${filename}.sha256"
 
     echo "Done"
     echo
@@ -104,8 +117,8 @@ tools()
     echo "Downloading tools"
 
     # # https://github.com/golangci/golangci-lint/releases
-    # get_latest_release golangci/golangci-lint -linux-amd64.tar.gz
-    # get_latest_release golangci/golangci-lint -linux-arm64.tar.gz
+    get_latest_release golangci/golangci-lint -linux-amd64.tar.gz
+    get_latest_release golangci/golangci-lint -linux-arm64.tar.gz
 
     # https://github.com/gotestyourself/gotestsum
     get_latest_release gotestyourself/gotestsum _linux_amd64.tar.gz
@@ -114,11 +127,16 @@ tools()
 
 filter_important()
 {
-    local m
+    local m=
     while read line; do
-        if [[ $line =~ "importPath: '" ]] ; then m=$line ; fi
-        if [[ $line =~ "isImportant: true" ]]; then echo $m; fi
+        if [[ $line =~ "importPath: '" ]] ; then
+            if [[ $m ]]; then echo $m; fi
+            m=$(echo $line | cut -d\' -f2)
+        fi
+        if [[ $line =~ "replacedByGopls: true" ]]; then echo >&2 "  skip $m (replaced by gopls)"; m=; fi
+        if [[ $line =~ "isImportant: false" ]] && [[ $m ]]; then echo >&2 "  skip $m (non important)"; m=; fi
     done
+    if [[ $m ]]; then echo $m; fi
 }
 
 mkdir -p ${DESTDIR}/go
@@ -129,26 +147,31 @@ for i; do
         -z|--gzip) compression=z ; shift ;;
         --no) compression= ; shift ;;
         test)
-            dl_111module test1 on github.com/godoctor/godoctor
+            dl_111module test1 on golang.org/x/example/hello
             dl_111module test2 auto github.com/julienschmidt/httprouter
             ;;
         pkgs)
-            # our Go modules list
-            packages=($(grep -v "^#" /go-modules.txt))
+            # download in GOPATH mode
+            packages=($(grep -v "^#" /go-modules.txt | cut -d@ -f1))
             dl_111module pkgs auto ${packages[*]}
+            ;;
+        mods)
+            # download in the new Go modules mode
+            packages=($(grep -v "^#" /go-modules.txt))
+            dl_111module mods on ${packages[*]}
+            ;;
+        vscode-full)
+            # fetch the list of tools into the the source code of the extension
+            vscode=($(curl -sL https://raw.githubusercontent.com/golang/vscode-go/master/src/goTools.ts | \
+                      sed "s/^.*importPath: '\(.*\)',.*$/\1/p;d"))
+            dl_111module vscode-full on ${vscode[*]}
             ;;
         vscode)
             # fetch the list of tools into the the source code of the extension
+            # retains only important extensions and those not replaced by the language server (gopls)
             vscode=($(curl -sL https://raw.githubusercontent.com/golang/vscode-go/master/src/goTools.ts | \
-                      sed "s/^.*importPath: '\(.*\)',.*$/\1/p;d"))
+                      filter_important))
             dl_111module vscode on ${vscode[*]}
-            ;;
-        vscode-light)
-            # fetch the list of tools into the the source code of the extension
-            vscode=($(curl -sL https://raw.githubusercontent.com/golang/vscode-go/master/src/goTools.ts | \
-                      filter_important | \
-                      sed "s/^.*importPath: '\(.*\)',.*$/\1/p;d"))
-            dl_111module vscode-light on ${vscode[*]}
             ;;
         tools)
             tools
