@@ -18,14 +18,19 @@ dl_111module()
     echo -e "Processing \033[1;33m${name}\033[0m set in mode \033[1;33m${mode}\033[0m with:"
     for i; do echo "  $i"; done
 
+    local basename="$(go version | sed -nr 's/^.* (go[0-9\.]+) .*$/\1/p')-${name}"
+
     unset GOROOT
     export GOPATH="/tmp/cache/${name}-111GOPATH"
     export GO111MODULE=${mode}
 
+    mkdir -p "${DESTDIR}/logs/"
+    rm -f "${DESTDIR}/logs/${basename}.log"
+
     # get the modules twice (everything goes under $GOPATH)
     for i; do
-        env GOARCH=arm64 go get $i
-        env GOARCH=amd64 go get $i
+        env GOARCH=arm64 go get $i |& tee -a "${DESTDIR}/logs/${basename}.log"
+        env GOARCH=amd64 go get $i |& tee -a "${DESTDIR}/logs/${basename}.log"
     done
 
     # by default,
@@ -40,9 +45,9 @@ dl_111module()
     echo "Make archive"
     tar -C "${GOPATH}" -c${compression}f /tmp/go-modules.tar .
 
-    local sha256=$(sha256sum -b < /tmp/go-modules.tar)
+    local sha256=$(sha256sum -b < /tmp/go-modules.tar | cut -f1 -d' ')
 
-    local filename="$(go version | sed -nr 's/^.* (go[0-9\.]+) .*$/\1/p')-${name}.sh"
+    local filename="${basename}.sh"
 
     echo -e "Write self-extracting script \033[1;31m${filename}\033[0m"
 
@@ -94,6 +99,10 @@ EOF
 
     cd "${DESTDIR}/go"
     sha256sum -b "${filename}" > "${filename}.sha256"
+
+    echo "# GO111MODULE=${mode}" > "${basename}.list"
+    echo "# SHA-256: ${sha256}" >> "${basename}.list"
+    for i in "$@"; do echo "$i"; done >> "${basename}.list"
 
     echo "Done"
     echo
