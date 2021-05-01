@@ -26,10 +26,15 @@ link=$(get_link "https://code.visualstudio.com/sha/download?build=${channel}&os=
 commit=$(echo $link  | sed  -r 's/.*\/([0-9a-f]{40})\/.*/\1/')
 version=$(echo $link  | sed  -r 's/.*\-([0-9\.]+(\-insider)?)\.zip$/\1/')
 
-echo -e "Found verison: \033[1;32m${version}\033[0m"
+echo -e "Found version: \033[1;32m${version}\033[0m"
 echo -e "Found commit: \033[1;32m${commit}\033[0m"
 
 mkdir -p ${DESTDIR}/vscode-${version}
+
+# save the commit id
+echo "channel=${channel}" > ${DESTDIR}/vscode-${version}/version
+echo "version=${version}" >> ${DESTDIR}/vscode-${version}/version
+echo "commit=${commit}" >> ${DESTDIR}/vscode-${version}/version
 
 # download windows, linux and vscode-server x86_64 et aarch64
 wget -nv -nc -P ${DESTDIR}/vscode-${version} $link
@@ -50,6 +55,7 @@ extensions=(
     ms-vscode-remote.remote-ssh
     ms-vscode-remote.remote-ssh-edit
     ms-azuretools.vscode-docker
+    ms-vscode.cmake-tools
     DavidAnson.vscode-markdownlint
     goessner.mdmath
     James-Yu.latex-workshop
