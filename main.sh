@@ -18,7 +18,7 @@ dl_111module()
     echo -e "Processing \033[1;33m${name}\033[0m set in mode \033[1;33m${mode}\033[0m with:"
     for i; do echo "  $i"; done
 
-    local basename="$(go version | sed -nr 's/^.* (go[0-9\.]+) .*$/\1/p')-${name}"
+    basename="$(go version | sed -nr 's/^.* (go[0-9\.]+) .*$/\1/p')-${name}"  #-$(date +%Y%M%d%H%M%S)"
 
     unset GOROOT
     export GOPATH="/tmp/cache/${name}-111GOPATH"
@@ -55,7 +55,7 @@ dl_111module()
     cat <<EOF > "${DESTDIR}/go/${filename}"
 #!/bin/sh
 if [ "\$1" = "-m" ]; then
-    for i in "$@"; do echo "$i"; done
+    for i in $@; do echo \$i; done
     exit
 elif [ "\$1" = "-i" ]; then
     echo $(date --iso-8601=minutes)
@@ -101,6 +101,7 @@ EOF
     sha256sum -b "${filename}" > "${filename}.sha256"
 
     echo "# GO111MODULE=${mode}" > "${basename}.list"
+    echo "# Size: $(stat --format %s ""${filename}"")" >> "${basename}.list"
     echo "# SHA-256: ${sha256}" >> "${basename}.list"
     for i in "$@"; do echo "$i"; done >> "${basename}.list"
 
