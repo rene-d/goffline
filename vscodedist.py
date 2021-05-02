@@ -121,13 +121,13 @@ def load_conf(conf_file):
 
     download_dir = Path("dl")
     commit = None
-    value = None
+    version = None
 
     for i in download_dir.glob("vscode-*"):
         version_file = i / "version"
         if i.is_dir() and version_file.is_file():
             if commit or value:
-                print("Found many version files. Exiting.")
+                print("Error: found more than one version file.")
                 exit(2)
             for line in version_file.read_text().splitlines():
                 key, value = line.split("=", 2)
@@ -135,6 +135,10 @@ def load_conf(conf_file):
                     commit = value
                 elif key == "version":
                     version = value
+
+    if not version or not commit:
+        print("Error: no version version file found.")
+        exit(2)
 
     print(f"Found version {version} commit {commit}")
 
