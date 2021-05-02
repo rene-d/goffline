@@ -126,7 +126,7 @@ def load_conf(conf_file):
     for i in download_dir.glob("vscode-*"):
         version_file = i / "version"
         if i.is_dir() and version_file.is_file():
-            if commit or value:
+            if commit or version:
                 print("Error: found more than one version file.")
                 exit(2)
             for line in version_file.read_text().splitlines():
