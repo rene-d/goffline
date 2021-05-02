@@ -3,8 +3,15 @@
 DESTDIR=${DESTDIR:-.}
 
 if [[ ! -f /.dockerenv ]]; then
+
+    list=
+    if [[ -f $1 ]]; then
+        list="-v $(realpath $1):/config.txt:ro"
+        shift
+    fi
+
     $(dirname $BASH_SOURCE)/golang.sh build_only
-    exec docker run --rm -ti -v $PWD/dl:/dl ${list} -w / go-pkgs-dl /vscode.sh $*
+    exec docker run --rm -ti -v $PWD/dl:/dl ${list} -w / ${list} go-pkgs-dl /vscode.sh
 fi
 
 # channel=insider
@@ -43,37 +50,16 @@ wget -nv -nc -P ${DESTDIR}/vscode-${version} $(get_link "https://update.code.vis
 wget -nv -nc -P ${DESTDIR}/vscode-${version} $(get_link "https://update.code.visualstudio.com/commit:${commit}/server-linux-arm64/${channel}")
 
 
-# download the extensions
+filter_vscode_config()
+{
+    awk '{ if ($1 ~ /^#/) next; if ($1 ~ /^\[/) section=$1; else if ($1 !~ /^$/) if (section=="[host]" || section=="[remote]") print $1  }'
+}
 
-extensions=(
-    ms-python.python
-    ms-python.vscode-pylance
-    ms-toolsai.jupyter
-    ms-vscode.cpptools
-    golang.go
-    ms-vscode-remote.remote-containers
-    ms-vscode-remote.remote-ssh
-    ms-vscode-remote.remote-ssh-edit
-    ms-azuretools.vscode-docker
-    ms-vscode.cmake-tools
-    DavidAnson.vscode-markdownlint
-    goessner.mdmath
-    James-Yu.latex-workshop
-    waderyan.gitblame
-    twxs.cmake
-    redhat.vscode-yaml
-    zxh404.vscode-proto3
-    cschlosser.doxdocgen
-    alexkrechik.cucumberautocomplete
-    secanis.jenkinsfile-support
-    janjoerke.jenkins-pipeline-linter-connector
-    rebornix.ruby
-    wingrunr21.vscode-ruby
-)
+# download the extensions
+extensions=($(cat config.txt | filter_vscode_config | sort -u))
 
 # open question: how to find the engine version ?
 # guess: vscode uses its version number (for example 1.55.2)
-
 for i in "${extensions[@]}"; do
     echo
     ./ext.sh $i ${version}

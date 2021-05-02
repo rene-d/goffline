@@ -8,6 +8,7 @@ fi
 set -u
 
 compression=J
+tag_date="$(date +%Y%m%d%H%M%S)"
 
 dl_111module()
 {
@@ -18,7 +19,12 @@ dl_111module()
     echo -e "Processing \033[1;33m${name}\033[0m set in mode \033[1;33m${mode}\033[0m with:"
     for i; do echo "  $i"; done
 
-    basename="$(go version | sed -nr 's/^.* (go[0-9\.]+) .*$/\1/p')-${name}"  #-$(date +%Y%M%d%H%M%S)"
+    # the basename contains Go version and date, except for the unit tests
+    if [[ ${name} =~ ^test[12]$ ]]; then
+        basename=${name}
+    else
+        basename="${name}-$(go version | sed -nr 's/^.* (go[0-9\.]+) .*$/\1/p')-${tag_date}"
+    fi
 
     unset GOROOT
     export GOPATH="/tmp/cache/${name}-111GOPATH"
@@ -149,6 +155,11 @@ filter_important()
     if [[ $m ]]; then echo $m; fi
 }
 
+parse_go_config()
+{
+    awk '{ if ($1 ~ /^#/) next; if ($1 ~ /^\[/) section=$1; else if ($1 !~ /^$/) if (section=="[go]") print $1  }'
+}
+
 mkdir -p ${DESTDIR}/go
 
 for i; do
@@ -162,12 +173,12 @@ for i; do
             ;;
         pkgs)
             # download in GOPATH mode
-            packages=($(grep -v "^#" /go-modules.txt | cut -d@ -f1))
+            packages=($(cat /config.txt | parse_go_config | cut -d@ -f1))
             dl_111module pkgs auto ${packages[*]}
             ;;
         mods)
             # download in the new Go modules mode
-            packages=($(grep -v "^#" /go-modules.txt))
+            packages=($(cat /config.txt | parse_go_config))
             dl_111module mods on ${packages[*]}
             ;;
         vscode-full)

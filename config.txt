@@ -1,0 +1,10 @@
+# configuration file
+
+[go]
+golang.org/x/example/hello
+
+[host]
+ms-vscode-remote.remote-ssh
+
+[remote]
+golang.go

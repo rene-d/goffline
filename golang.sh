@@ -15,6 +15,7 @@ elif [[ "$1" == "shell" ]]; then
     exec docker run --rm -ti -v $PWD:/wd -w /wd go-pkgs-dl
 
 elif [[ "$1" == "test" ]]; then
+    rm -f dl/go/test[12].*
 
     # download only godoctor and httprouter
     docker run --rm -ti -v $PWD/dl:/dl go-pkgs-dl /main.sh test
@@ -25,10 +26,10 @@ elif [[ "$1" == "test" ]]; then
 
     # test compiled module
     docker run --rm -ti -v $PWD/dl:/dl --network none go-pkgs-dl sh -c \
-                "/dl/go/go${GO_VERSION}-test1.sh -h;
-                 /dl/go/go${GO_VERSION}-test1.sh -i;
-                 /dl/go/go${GO_VERSION}-test1.sh -m;
-                 /dl/go/go${GO_VERSION}-test1.sh;
+                "/dl/go/test1.sh -h;
+                 /dl/go/test1.sh -i;
+                 /dl/go/test1.sh -m;
+                 /dl/go/test1.sh;
                  hello && echo '\033[32mtest is ok\033[0m'"
 
     # test build with module (in GOPATH mode)
@@ -52,7 +53,7 @@ func main() {
 }
 EOF
 ) | docker run --rm -i -v $PWD/dl:/dl --network none go-pkgs-dl sh -c "cat > /tmp/test.go ; \
-                cat /dl/go/go${GO_VERSION}-test2.sh | sh; go build /tmp/test.go; ls -l test ; ./test"
+                cat /dl/go/test2.sh | sh; go build /tmp/test.go; ls -l test ; ./test"
 
 elif [[ "$1" =~ "vscode" ]]; then
     docker run --rm -ti -v $PWD/dl:/dl ${list} go-pkgs-dl /main.sh $1
@@ -60,7 +61,7 @@ elif [[ "$1" =~ "vscode" ]]; then
 else
     list=
     if [[ -f $1 ]]; then
-        list="-v $(realpath $1):/go-modules.txt:ro"
+        list="-v $(realpath $1):/config.txt:ro"
         shift
     fi
     if [[ $# == 0 ]]; then
