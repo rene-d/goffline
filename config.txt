@@ -3,8 +3,8 @@
 [go]
 golang.org/x/example/hello
 
-[host]
+[vscode:host]
 ms-vscode-remote.remote-ssh
 
-[remote]
+[vscode:remote]
 golang.go

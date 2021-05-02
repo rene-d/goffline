@@ -8,7 +8,10 @@ fi
 set -u
 
 compression=J
-tag_date="$(date +%Y%m%d%H%M%S)"
+
+now=$(date +%s)
+tag_date="$(date --date=@${now} +%Y%m%d%H%M%S)"
+tag_date_iso8601="$(date --date=@${now} --iso-8601=seconds)"
 
 dl_111module()
 {
@@ -34,10 +37,8 @@ dl_111module()
     rm -f "${DESTDIR}/logs/${basename}.log"
 
     # get the modules twice (everything goes under $GOPATH)
-    for i; do
-        env GOARCH=arm64 go get $i |& tee -a "${DESTDIR}/logs/${basename}.log"
-        env GOARCH=amd64 go get $i |& tee -a "${DESTDIR}/logs/${basename}.log"
-    done
+    env GOARCH=arm64 go get $* |& tee -a "${DESTDIR}/logs/${basename}.log"
+    env GOARCH=amd64 go get $* |& tee -a "${DESTDIR}/logs/${basename}.log"
 
     # by default,
     # host arch binaries are into $GOPATH/bin/
@@ -61,11 +62,12 @@ dl_111module()
     cat <<EOF > "${DESTDIR}/go/${filename}"
 #!/bin/sh
 if [ "\$1" = "-m" ]; then
-    for i in $@; do echo \$i; done
+    for i in $@
+    do echo \$i; done
     exit
 elif [ "\$1" = "-i" ]; then
-    echo $(date --iso-8601=minutes)
-    echo ${sha256}
+    echo "${tag_date_iso8601}"
+    echo "${sha256}"
     exit
 elif [ "\$1" = "-t" ]; then
     fn()
@@ -89,10 +91,10 @@ else
     {
         arch=\$(go env GOHOSTARCH)
         if [ \${arch} = amd64 ]; then exclude=arm64; else exclude=amd64; fi
-        tar -C \$(go env GOROOT) \
-            -x${compression} \
-            --no-same-owner \
-            --transform="s,bin/linux_\${arch},bin," \
+        tar -C \$(go env GOROOT) \\
+            -x${compression} \\
+            --no-same-owner \\
+            --transform="s,bin/linux_\${arch},bin," \\
             --exclude="bin/linux_\${exclude}*"
     }
 fi

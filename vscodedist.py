@@ -138,10 +138,11 @@ def load_conf(conf_file):
 
     print(f"Found version {version} commit {commit}")
 
-    if "host" in config:
-        make_host(download_dir, version, list(config["host"].keys()))
-    if "remote" in config:
-        make_remote(download_dir, version, commit, list(config["remote"].keys()), "x86_64")
+    if "vscode:host" in config:
+        make_host(download_dir, version, list(config["vscode:host"].keys()))
+
+    if "vscode:remote" in config:
+        make_remote(download_dir, version, commit, list(config["vscode:remote"].keys()), "x86_64")
 
 
 def main():

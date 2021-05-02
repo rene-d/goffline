@@ -52,7 +52,7 @@ wget -nv -nc -P ${DESTDIR}/vscode-${version} $(get_link "https://update.code.vis
 
 filter_vscode_config()
 {
-    awk '{ if ($1 ~ /^#/) next; if ($1 ~ /^\[/) section=$1; else if ($1 !~ /^$/) if (section=="[host]" || section=="[remote]") print $1  }'
+    awk '{ if ($1 ~ /^#/) next; if ($1 ~ /^\[/) section=$1; else if ($1 !~ /^$/) if (section ~ /^\[vscode.*\]$/) print $1  }'
 }
 
 # download the extensions
