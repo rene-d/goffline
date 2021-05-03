@@ -47,10 +47,10 @@ echo "version=${version}" >> ${DESTDIR}/vscode-${version}/version
 echo "commit=${commit}" >> ${DESTDIR}/vscode-${version}/version
 
 # download windows, linux and vscode-server x86_64 et aarch64
-wget -nv -nc -P ${DESTDIR}/vscode-${version} $link
-wget -nv -nc -P ${DESTDIR}/vscode-${version} $(get_link "https://code.visualstudio.com/sha/download?build=${channel}&os=linux-x64")
-wget -nv -nc -P ${DESTDIR}/vscode-${version} $(get_link "https://update.code.visualstudio.com/commit:${commit}/server-linux-x64/${channel}")
-wget -nv -nc -P ${DESTDIR}/vscode-${version} $(get_link "https://update.code.visualstudio.com/commit:${commit}/server-linux-arm64/${channel}")
+# wget -nv -nc -P ${DESTDIR}/vscode-${version} $link
+# wget -nv -nc -P ${DESTDIR}/vscode-${version} $(get_link "https://code.visualstudio.com/sha/download?build=${channel}&os=linux-x64")
+# wget -nv -nc -P ${DESTDIR}/vscode-${version} $(get_link "https://update.code.visualstudio.com/commit:${commit}/server-linux-x64/${channel}")
+# wget -nv -nc -P ${DESTDIR}/vscode-${version} $(get_link "https://update.code.visualstudio.com/commit:${commit}/server-linux-arm64/${channel}")
 
 
 filter_vscode_config()

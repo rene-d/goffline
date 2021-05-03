@@ -6,7 +6,7 @@ if [[ ! -f /.dockerenv ]] || [[ ! ${GOLANG_VERSION} ]]; then
     exit 2
 fi
 
-set -u
+set -ue
 
 compression=J
 

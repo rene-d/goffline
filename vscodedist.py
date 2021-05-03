@@ -66,6 +66,9 @@ def make_host(download_dir: Path, version: str, host_extensions: List):
                     else:
                         pass
 
+    print("Done")
+    print
+
 
 def make_remote(download_dir: Path, version: str, commit_id: str, remote_extension: List, arch: str = "x86_64"):
     """ Make the archive for remote extensions that should be extracted into $HOME. """
@@ -113,6 +116,9 @@ def make_remote(download_dir: Path, version: str, commit_id: str, remote_extensi
                 tar_remote.addfile(ti, vsix.open(f))
 
     tar_remote.close()
+
+    print("Done")
+    print
 
 
 def load_conf(conf_file):

@@ -118,7 +118,7 @@ vercomp()
 
 # get all version engines (recent first)
 set -f # engine version could be "*" - really annoying in a shell script
-engines=($(echo $json | jq -r '.results[].extensions[].versions[].properties | map(select(.key | contains("Microsoft.VisualStudio.Code.Engine")).value)[]' 2>/dev/null))
+engines=($(echo $json | jq -r '.results[].extensions[].versions[].properties | map(select(.key | contains("Microsoft.VisualStudio.Code.Engine")).value)[]' 2>/dev/null || true))
 
 # find the first suitable engine
 version_index=
@@ -145,16 +145,25 @@ echo -e "version: \033[1;32m${version}\033[0m"
 
 mkdir -p ${dl_dir}
 
+curl_no_clobber()
+{
+    # with -nc and -o, wget indicates an error if file exists
+    # (however, without -o it works as expected)
+    if [[ ! -f "$1" ]]; then
+        curl -sSL -o "$1" "$2"
+    fi
+}
+
 if [[ $name == "ms-vscode.cpptools" ]]; then
     # C/C++ extension has to be downloaded from GitHub releases since it is platform dependent
 
     vsix=${name}-linux-aarch64-${version}.vsix
     echo -e "vsix: \033[1;36m${vsix}\033[0m"
-    wget -nc -nv --output-document "${dl_dir}/${vsix}" https://github.com/microsoft/vscode-cpptools/releases/download/${version}/cpptools-linux-aarch64.vsix
+    curl_no_clobber "${dl_dir}/${vsix}" https://github.com/microsoft/vscode-cpptools/releases/download/${version}/cpptools-linux-aarch64.vsix
 
     vsix=${name}-linux-${version}.vsix
     echo -e "vsix: \033[1;36m${vsix}\033[0m"
-    wget -nc -nv --output-document "${dl_dir}/${vsix}" https://github.com/microsoft/vscode-cpptools/releases/download/${version}/cpptools-linux.vsix
+    curl_no_clobber "${dl_dir}/${vsix}" https://github.com/microsoft/vscode-cpptools/releases/download/${version}/cpptools-linux.vsix
 else
     # construct the vsix filename
     vsix=$(echo $json | jq -r '.results[].extensions[] | (.publisher.publisherName+"."+ .extensionName+ "-"+.versions['${version_index}'].version)')
@@ -165,5 +174,5 @@ else
     assetUri=$(echo $json | jq -r '.results[].extensions[].versions['${version_index}'].assetUri')
 
     # download the .vsix (e.g. the archive of the extension)
-    wget -nc -nv --output-document "${dl_dir}/${vsix}" "$assetUri/Microsoft.VisualStudio.Services.VSIXPackage"
+    curl_no_clobber "${dl_dir}/${vsix}" "$assetUri/Microsoft.VisualStudio.Services.VSIXPackage"
 fi
