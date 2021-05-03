@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Make archive of Go downloaded Go modules.
 
 if [[ ! -f /.dockerenv ]] || [[ ! ${GOLANG_VERSION} ]]; then
     echo >&2 "Should be run into the container"

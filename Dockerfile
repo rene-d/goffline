@@ -6,7 +6,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && \
     apt-get upgrade -y && \
-    apt-get install -y --no-install-recommends jq curl git vim sudo lzma unzip xz-utils bzip2
+    apt-get install -y --no-install-recommends jq curl git vim sudo unzip xz-utils bzip2
 
 COPY *.sh config.txt /
 

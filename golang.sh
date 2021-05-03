@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Use a Docker container to call the Go modules downloader
 
 set -e
 
@@ -9,12 +10,18 @@ DOCKER_SCAN_SUGGEST=false docker build --build-arg GO_VERSION=${GO_VERSION} -t g
 mkdir -p $PWD/dl
 
 if [[ "$1" == "build_only" ]]; then
+    # just build the image
+
     exit
 
 elif [[ "$1" == "shell" ]]; then
+    # launch a shell into the conatiner
+
     exec docker run --rm -ti -v $PWD:/wd -w /wd go-pkgs-dl
 
 elif [[ "$1" == "test" ]]; then
+    # unit tests
+
     rm -f dl/go/test[12].*
 
     # download only godoctor and httprouter
@@ -56,9 +63,11 @@ EOF
                 cat /dl/go/test2.sh | sh; go build /tmp/test.go; ls -l test ; ./test"
 
 elif [[ "$1" =~ "vscode" ]]; then
+    # download Visual Studio Code Go extension tools
     docker run --rm -ti -v $PWD/dl:/dl ${list} go-pkgs-dl /main.sh $1
 
 else
+    # download Go modules
     list=
     if [[ -f $1 ]]; then
         list="-v $(realpath $1):/config.txt:ro"

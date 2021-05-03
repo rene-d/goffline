@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# Download the last Visual Studio Code extension compatible with a given version
+
+set -e
 
 slug=$1
 engine=${2:-1.55.2}

@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Package extensions into a single archive for host and remote installations.
 
 from typing import List
 from zipfile import ZipFile
@@ -114,7 +115,7 @@ def make_remote(download_dir: Path, version: str, commit_id: str, remote_extensi
 
 
 def load_conf(conf_file):
-    """ """
+    """ Use a configuration file to build the host and remote archives. """
 
     config = configparser.ConfigParser(allow_no_value=True)
     config.read(conf_file)

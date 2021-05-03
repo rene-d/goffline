@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# Download Visual Studio Code client and server, and a list of extensions
+
+set -e
 
 DESTDIR=${DESTDIR:-.}
 
