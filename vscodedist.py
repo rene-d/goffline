@@ -52,9 +52,9 @@ def make_host(download_dir: Path, version: str, host_extensions: List):
         for vsix_name in host_extensions:
 
             vsix_file = find_vsix(download_dir / f"vscode-extensions-{version}", vsix_name)
+            vsix_name = vsix_file.with_suffix("").name
 
             print(f"adding {vsix_file.name}")
-            vsix_name = vsix_name.with_suffix("").name
 
             with ZipFile(vsix_file) as vsix_zip:
                 for f in vsix_zip.infolist():
@@ -100,9 +100,9 @@ def make_remote(download_dir: Path, version: str, commit_id: str, remote_extensi
     for vsix_name in remote_extension:
 
         vsix_file = find_vsix(download_dir / f"vscode-extensions-{version}", vsix_name, arch)
+        vsix_name = vsix_file.with_suffix("").name
 
         print(f"adding {vsix_file.name}")
-        vsix_name = vsix_name.with_suffix("").name
 
         with ZipFile(vsix_file) as vsix:
             for f in vsix.infolist():
