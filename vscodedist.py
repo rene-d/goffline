@@ -46,7 +46,7 @@ def make_host(download_dir: Path, version: str, host_extensions: List):
 
     zip_file = download_dir / f"VSCode-host-extensions-{version}.zip"
 
-    print(f"Make host extensions archive: {zip_file.name}")
+    print(f"Make host extensions archive")
 
     with ZipFile(zip_file, "w") as zip_host:
         for vsix_name in host_extensions:
@@ -66,8 +66,9 @@ def make_host(download_dir: Path, version: str, host_extensions: List):
                     else:
                         pass
 
+    print(f"Written: \033[1;31m{zip_file.name}\033[0m")
     print("Done")
-    print
+    print()
 
 
 def make_remote(download_dir: Path, version: str, commit_id: str, remote_extension: List, arch: str = "x86_64"):
@@ -75,7 +76,7 @@ def make_remote(download_dir: Path, version: str, commit_id: str, remote_extensi
 
     tar_remote = tarfile.open(download_dir / f"vscode-server+extensions-{arch}-{version}.tar.xz", mode="w:xz")
 
-    print(f"Make host extensions archive: {Path(tar_remote.name).name}")
+    print(f"Make host extensions archive")
 
     if arch == "aarch64":
         server_archive = "vscode-server-linux-arm64.tar.gz"
@@ -117,8 +118,9 @@ def make_remote(download_dir: Path, version: str, commit_id: str, remote_extensi
 
     tar_remote.close()
 
+    print(f"Written: \033[1;31m{Path(tar_remote.name).name}\033[0m")
     print("Done")
-    print
+    print()
 
 
 def load_conf(conf_file):
@@ -151,7 +153,7 @@ def load_conf(conf_file):
         print("Error: no version version file found.")
         exit(2)
 
-    print(f"Found version {version} commit {commit}")
+    print(f"Found version \033[1;32m{version}\033[0m commit \033[1;32m{commit}\033[0m")
 
     if "vscode:host" in config:
         make_host(download_dir, version, list(config["vscode:host"].keys()))
