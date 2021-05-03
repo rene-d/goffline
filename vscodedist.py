@@ -46,7 +46,7 @@ def make_host(download_dir: Path, version: str, host_extensions: List):
 
     zip_file = download_dir / f"VSCode-host-extensions-{version}.zip"
 
-    print(f"Make \033[1;33mhost\033[0m extensions archive")
+    print(f"Making \033[1;33mhost\033[0m extensions archive")
 
     with ZipFile(zip_file, "w") as zip_host:
         for vsix_name in host_extensions:
@@ -76,7 +76,7 @@ def make_remote(download_dir: Path, version: str, commit_id: str, remote_extensi
 
     tar_remote = tarfile.open(download_dir / f"vscode-server+extensions-{arch}-{version}.tar.xz", mode="w:xz")
 
-    print(f"Make \033[1;33mremote\033[0m extensions archive")
+    print(f"Making \033[1;33mremote\033[0m extensions archive")
 
     if arch == "aarch64":
         server_archive = "vscode-server-linux-arm64.tar.gz"

@@ -50,14 +50,14 @@ dl_111module()
     mkdir -p ${bin_arch}
     find ${GOPATH}/bin -maxdepth 1 -type f | xargs -i+ mv -f + ${bin_arch}
 
-    echo "Make archive"
+    echo "Making archive"
     tar -C "${GOPATH}" -c${compression}f /tmp/go-modules.tar .
 
     local sha256=$(sha256sum -b < /tmp/go-modules.tar | cut -f1 -d' ')
 
     local filename="${basename}.sh"
 
-    echo -e "Write self-extracting script \033[1;31m${filename}\033[0m"
+    echo -e "Writing self-extracting script \033[1;31m${filename}\033[0m"
 
     # as we have downloaded the both architectures, the extract script should deal with that
     cat <<EOF > "${DESTDIR}/go/${filename}"
