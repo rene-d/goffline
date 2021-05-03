@@ -52,17 +52,19 @@ def make_host(download_dir: Path, version: str, host_extensions: List):
         for vsix_name in host_extensions:
 
             vsix_file = find_vsix(download_dir / f"vscode-extensions-{version}", vsix_name)
-            vsix_name = vsix_file.with_suffix("").name
+
+            # directory name contains the version and is lowercase
+            vsix_dir = vsix_file.with_suffix("").name.lower()
 
             print(f"adding {vsix_file.name}")
 
             with ZipFile(vsix_file) as vsix_zip:
                 for f in vsix_zip.infolist():
                     if f.filename == "extension.vsixmanifest":
-                        f.filename = f".vscode/extensions/{vsix_name}/.vsixmanifest"
+                        f.filename = f".vscode/extensions/{vsix_dir}/.vsixmanifest"
                         zip_host.writestr(f, vsix_zip.read(f))
                     elif f.filename.startswith("extension/"):
-                        f.filename = f".vscode/extensions/{vsix_name}" + f.filename[len("extension") :]
+                        f.filename = f".vscode/extensions/{vsix_dir}" + f.filename[len("extension") :]
                         zip_host.writestr(f, vsix_zip.read(f))
                     else:
                         pass
@@ -100,7 +102,9 @@ def make_remote(download_dir: Path, version: str, commit_id: str, remote_extensi
     for vsix_name in remote_extension:
 
         vsix_file = find_vsix(download_dir / f"vscode-extensions-{version}", vsix_name, arch)
-        vsix_name = vsix_file.with_suffix("").name
+
+        # directory name contains the version and is lowercase
+        vsix_dir = vsix_file.with_suffix("").name.lower()
 
         print(f"adding {vsix_file.name}")
 
@@ -108,9 +112,9 @@ def make_remote(download_dir: Path, version: str, commit_id: str, remote_extensi
             for f in vsix.infolist():
                 ti = tarfile.TarInfo()
                 if f.filename == "extension.vsixmanifest":
-                    ti.name = f".vscode-server/extensions/{vsix_name}/.vsixmanifest"
+                    ti.name = f".vscode-server/extensions/{vsix_dir}/.vsixmanifest"
                 elif f.filename.startswith("extension/"):
-                    ti.name = f".vscode-server/extensions/{vsix_name}" + f.filename[len("extension") :]
+                    ti.name = f".vscode-server/extensions/{vsix_dir}" + f.filename[len("extension") :]
                 else:
                     continue
                 ti.mode = f.external_attr >> 16
