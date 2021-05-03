@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # Package extensions into a single archive for host and remote installations.
 
+import sys
 from typing import List
 from zipfile import ZipFile
 import tarfile
@@ -118,7 +119,10 @@ def load_conf(conf_file):
     """ Use a configuration file to build the host and remote archives. """
 
     config = configparser.ConfigParser(allow_no_value=True)
-    config.read(conf_file)
+    if conf_file == "-":
+        config.read_file(sys.stdin)
+    else:
+        config.read(conf_file)
 
     download_dir = Path("dl")
     commit = None
