@@ -67,3 +67,4 @@ for i in "${extensions[@]}"; do
     echo
     ./ext.sh $i ${version}
 done
+echo
