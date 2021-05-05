@@ -24,7 +24,7 @@ dl_111module()
     for i; do echo "  $i"; done
 
     # the basename contains Go version and date, except for the unit tests
-    if [[ ${name} =~ ^test[12]$ ]]; then
+    if [[ ${name} =~ ^test[1-9]$ ]]; then
         basename=${name}
     else
         basename="${name}-$(go version | sed -nr 's/^.* (go[0-9\.]+) .*$/\1/p')-${tag_date}"
@@ -92,7 +92,7 @@ else
     {
         arch=\$(go env GOHOSTARCH)
         if [ \${arch} = amd64 ]; then exclude=arm64; else exclude=amd64; fi
-        tar -C \$(go env GOROOT) \\
+        tar -C \$(go env GOPATH) \\
             -x${compression} \\
             --no-same-owner \\
             --transform="s,bin/linux_\${arch},bin," \\
@@ -172,7 +172,8 @@ for i; do
         --no) compression= ; shift ;;
         test)
             dl_111module test1 on golang.org/x/example/hello
-            dl_111module test2 auto github.com/julienschmidt/httprouter
+            dl_111module test2 auto rsc.io/sampler
+            dl_111module test3 on rsc.io/quote@v1.5.2
             ;;
         pkgs)
             # download in GOPATH mode
