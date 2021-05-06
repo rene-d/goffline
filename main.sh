@@ -20,6 +20,13 @@ dl_111module()
     local mode=$2
     shift 2
 
+    # special mode "bin" archives only binaries
+    local arch_dirs=.
+    if [[ ${mode} == bin ]]; then
+        mode=on
+        arch_dirs=bin
+    fi
+
     echo -e "Processing \033[1;33m${name}\033[0m set in mode \033[1;33m${mode}\033[0m with:"
     for i; do echo "  $i"; done
 
@@ -50,8 +57,21 @@ dl_111module()
     mkdir -p ${bin_arch}
     find ${GOPATH}/bin -maxdepth 1 -type f | xargs -i+ mv -f + ${bin_arch}
 
+    # Retrieve the list of modules/version
+    local mods
+    if [[ ${mode} != on ]]; then
+        mods=($*)
+    else
+        mods=($(cd ${GOPATH}/pkg/mod/cache/download && find . -name '*.zip' | cut -d/ -f2- | sed -r 's,/@v/(.*)\.zip$,@\1,'))
+    fi
+    for i in ${mods[*]}; do
+        echo $i | sed 's/@/ /' | sed -e 's/!\([a-z]\)/\u\1/' >> "${GOPATH}/gomods.txt"
+    done
+
+    echo mods=${mods[@]}
+
     echo "Making archive"
-    tar -C "${GOPATH}" -c${compression}f /tmp/go-modules.tar .
+    tar -C "${GOPATH}" -c${compression}f /tmp/go-modules.tar ${arch_dirs}
 
     local sha256=$(sha256sum -b < /tmp/go-modules.tar | cut -f1 -d' ')
 
@@ -63,7 +83,7 @@ dl_111module()
     cat <<EOF > "${DESTDIR}/go/${filename}"
 #!/bin/sh
 if [ "\$1" = "-m" ]; then
-    for i in $@
+    for i in ${mods[*]}
     do echo \$i; done
     exit
 elif [ "\$1" = "-i" ]; then
@@ -160,7 +180,11 @@ filter_important()
 
 parse_go_config()
 {
-    awk '{ if ($1 ~ /^#/) next; if ($1 ~ /^\[/) section=$1; else if ($1 !~ /^$/) if (section=="[go]") print $1  }'
+    local section=
+    if [[ $1 ]]; then
+        section=$1
+    fi
+    awk '{ if ($1 ~ /^#/) next; if ($1 ~ /^\[/) section=$1; else if ($1 !~ /^$/) if (section=="[go]" || section=="['${section}']" ) print $1  }'
 }
 
 mkdir -p ${DESTDIR}/go
@@ -177,12 +201,12 @@ for i; do
             ;;
         pkgs)
             # download in GOPATH mode
-            packages=($(cat /config.txt | parse_go_config | cut -d@ -f1))
+            packages=($(cat /config.txt | parse_go_config gopackages | cut -d@ -f1))
             dl_111module pkgs auto ${packages[*]}
             ;;
         mods)
             # download in the new Go modules mode
-            packages=($(cat /config.txt | parse_go_config))
+            packages=($(cat /config.txt | parse_go_config gomodules))
             dl_111module mods on ${packages[*]}
             ;;
         vscode-full)
@@ -197,6 +221,13 @@ for i; do
             vscode=($(curl -sL https://raw.githubusercontent.com/golang/vscode-go/master/src/goTools.ts | \
                       filter_important))
             dl_111module vscode on ${vscode[*]}
+            ;;
+        vscode-bin)
+            # fetch the list of tools into the the source code of the extension
+            # retains only important extensions and those not replaced by the language server (gopls)
+            vscode=($(curl -sL https://raw.githubusercontent.com/golang/vscode-go/master/src/goTools.ts | \
+                      filter_important))
+            dl_111module vscode-bin bin ${vscode[*]}
             ;;
         tools)
             tools
