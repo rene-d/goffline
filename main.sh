@@ -48,6 +48,9 @@ dl_111module()
     env GOARCH=arm64 go get $* |& tee -a "${DESTDIR}/logs/${basename}.log"
     env GOARCH=amd64 go get $* |& tee -a "${DESTDIR}/logs/${basename}.log"
 
+    # permissions for all
+    chmod -R a+rX ${GOPATH}
+
     # by default,
     # host arch binaries are into $GOPATH/bin/
     # other arch binaries are into $GOPATH/bin/linux_<arch>/
