@@ -1,5 +1,7 @@
 # Goffline
 
+[![CI](https://github.com/rene-d/goffline/actions/workflows/go_test.yml/badge.svg)](https://github.com/rene-d/goffline/actions/workflows/go_test.yml)
+
 How to use Go modules offline, without a GOPROXY like [Athens](https://github.com/gomods/athens) or a bunch of `git clone` and with keeping checksums verification.
 
 Binaries for both architectures `amd64` and `arm64` are built during the download step, and the right one extracted during the installation step.
