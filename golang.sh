@@ -33,15 +33,15 @@ elif [[ "$1" == "test" ]]; then
 
     rm -f dl/go/test[1-9].*
 
-    # download only godoctor and httprouter
-    docker run --rm -ti -v $PWD/dl:/dl go-pkgs-dl /main.sh test
+    # download only modules for the tests
+    docker run --rm -i -v $PWD/dl:/dl go-pkgs-dl /main.sh test
 
     # # try to install godoctor with Internet connection    echo
     echo "Testing Go without Internet connection"
     echo
 
     # test compiled module
-    docker run --rm -ti -v $PWD/dl:/dl --network none go-pkgs-dl sh -c \
+    docker run --rm -i -v $PWD/dl:/dl --network none go-pkgs-dl sh -c \
                 "/dl/go/test1.sh -h;
                  /dl/go/test1.sh -i;
                  /dl/go/test1.sh -m;
@@ -84,13 +84,9 @@ EOF
     echo 'require rsc.io/quote v1.5.2' >> go.mod ;\
     go build ; ls -l hello ; ./hello"
 
-
-
-
-
 elif [[ "$1" =~ "vscode" ]]; then
     # download Visual Studio Code Go extension tools
-    docker run --rm -ti -v $PWD/dl:/dl ${list} go-pkgs-dl /main.sh $1
+    docker run --rm -i -v $PWD/dl:/dl ${list} go-pkgs-dl /main.sh $1
 
 else
     # download Go modules
@@ -103,5 +99,5 @@ else
         set -- pkgs
     fi
 
-    docker run --rm -ti -v $PWD/dl:/dl ${list} go-pkgs-dl /main.sh $*
+    docker run --rm -i -v $PWD/dl:/dl ${list} go-pkgs-dl /main.sh $*
 fi
