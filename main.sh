@@ -65,10 +65,10 @@ dl_111module()
     if [[ ${mode} != on ]]; then
         mods=($*)
     else
-        mods=($(cd ${GOPATH}/pkg/mod/cache/download && find . -name '*.zip' | cut -d/ -f2- | sed -r 's,/@v/(.*)\.zip$,@\1,'))
+        mods=($(cd ${GOPATH}/pkg/mod/cache/download && find . -name '*.zip' | cut -d/ -f2- | sed -r 's,/@v/(.*)\.zip$,@\1,' | sed -e 's/!\([a-z]\)/\u\1/' ))
     fi
     for i in ${mods[*]}; do
-        echo $i | sed 's/@/ /' | sed -e 's/!\([a-z]\)/\u\1/' >> "${GOPATH}/gomods.txt"
+        echo $i | sed 's/@/ /' >> "${GOPATH}/gomods.txt"
     done
 
     echo mods=${mods[@]}
@@ -198,7 +198,7 @@ for i; do
         -z|--gzip) compression=z ; shift ;;
         --no) compression= ; shift ;;
         test)
-            dl_111module test1 on golang.org/x/example/hello
+            dl_111module test1 bin golang.org/x/example/hello
             dl_111module test2 auto rsc.io/sampler
             dl_111module test3 on rsc.io/quote@v1.5.2
             ;;
