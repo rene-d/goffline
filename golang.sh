@@ -25,7 +25,7 @@ elif [[ "$1" == "rshell" ]]; then
     exec docker run --network none --rm -ti -v "$PWD:/wd" -w /wd go-pkgs-dl
 
 elif [[ "$1" == "chown" ]]; then
-    exec docker run --rm -ti -v "$PWD/dl:/dl" go-pkgs-dl chown -R "$(id -u):$(id -g)" /dl
+    exec docker run --rm -i -v "$PWD/dl:/dl" go-pkgs-dl chown -R "$(id -u):$(id -g)" /dl
 
 
 elif [[ "$1" == "test" ]]; then
