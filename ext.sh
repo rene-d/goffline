@@ -57,12 +57,12 @@ data=$(cat <<EOF
                 },
                 {
                     "filterType": $FilterType_ExtensionName,
-                    "value": "$1"
+                    "value": "$slug"
                 }
             ]
         }
     ],
-    "flags": $(( $Flags_IncludeAssetUri + $Flags_IncludeVersionProperties)),
+    "flags": $(( Flags_IncludeAssetUri + Flags_IncludeVersionProperties)),
 }
 EOF
 )
@@ -143,7 +143,7 @@ fi
 version=$(echo $json | jq -r '.results[].extensions[] | (.versions['${version_index}'].version)')
 echo -e "version: \033[1;32m${version}\033[0m"
 
-mkdir -p ${dl_dir}
+mkdir -p "${dl_dir}"
 
 curl_no_clobber()
 {
