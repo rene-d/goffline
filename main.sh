@@ -41,12 +41,9 @@ dl_111module()
     export GOPATH="/tmp/cache/${name}-111GOPATH"
     export GO111MODULE="${mode}"
 
-    mkdir -p "${DESTDIR}/logs/"
-    rm -f "${DESTDIR}/logs/${basename}.log"
-
     # get the modules twice (everything goes under $GOPATH)
-    env GOARCH=arm64 go get $* |& tee -a "${DESTDIR}/logs/${basename}.log"
-    env GOARCH=amd64 go get $* |& tee -a "${DESTDIR}/logs/${basename}.log"
+    env GOARCH=arm64 go get $*
+    env GOARCH=amd64 go get $*
 
     # permissions for all
     chmod -R a+rX "${GOPATH}"
@@ -205,23 +202,10 @@ for i; do
         -z|--gzip) compression=z ; shift ;;
         --no) compression= ; shift ;;
         test)
-            get_go_version()
-            {
-                local IFS=.
-                local num_go_version=(${GOLANG_VERSION})
-                printf "%02d.%02d.%02d" ${num_go_version[0]} ${num_go_version[1]} ${num_go_version[2]}
-            }
+            rm -f "${DESTDIR}"/go/dl/go/test[1-9].*
 
             dl_111module test1 bin golang.org/x/example/hello
-            if [[ $(get_go_version) < "01.16.00" ]]; then
-                dl_111module test2 auto rsc.io/sampler
-            fi
-            dl_111module test3 on rsc.io/quote@v1.5.2
-            ;;
-        pkgs)
-            # download in GOPATH mode
-            packages=($(cat /config.txt | parse_go_config gopackages | cut -d@ -f1))
-            dl_111module pkgs auto ${packages[*]}
+            dl_111module test2 on rsc.io/quote@v1.5.2
             ;;
         mods)
             # download in the new Go modules mode
