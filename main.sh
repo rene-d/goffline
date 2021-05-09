@@ -85,6 +85,13 @@ dl_111module()
     # as we have downloaded the both architectures, the extract script should deal with that
     cat <<EOF > "${DESTDIR}/go/${filename}"
 #!/bin/sh
+ver=\$(go version | sed -nr 's/^.*go([0-9.]+) .*/\1/p')
+if [ "\${ver}" != "${GOLANG_VERSION}" ]; then
+    echo >&2 "Go version mismatch"
+    echo >&2 "Found:    \${ver}"
+    echo >&2 "Expected: ${GOLANG_VERSION}"
+    exit 2
+fi
 if [ "\$1" = "-m" ]; then
     for i in ${mods[*]}
     do echo "\$i"; done
@@ -198,8 +205,17 @@ for i; do
         -z|--gzip) compression=z ; shift ;;
         --no) compression= ; shift ;;
         test)
+            get_go_version()
+            {
+                local IFS=.
+                local num_go_version=(${GOLANG_VERSION})
+                printf "%02d.%02d.%02d" ${num_go_version[0]} ${num_go_version[1]} ${num_go_version[2]}
+            }
+
             dl_111module test1 bin golang.org/x/example/hello
-            dl_111module test2 auto rsc.io/sampler
+            if [[ $(get_go_version) < "01.16.00" ]]; then
+                dl_111module test2 auto rsc.io/sampler
+            fi
             dl_111module test3 on rsc.io/quote@v1.5.2
             ;;
         pkgs)

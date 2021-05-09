@@ -2,13 +2,13 @@
 
 name: CI
 
-# Controls when the action will run. 
+# Controls when the action will run.
 on:
   # Triggers the workflow on push or pull request events but only for the master branch
   push:
-    branches: [ master ]
+    branches: [master]
   pull_request:
-    branches: [ master ]
+    branches: [master]
 
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
@@ -26,5 +26,17 @@ jobs:
       - uses: actions/checkout@v2
 
       # Runs a single command using the runners shell
-      - name: Go modules test
-        run: ./golang.sh test
+      - name: Go modules test 1.14
+        run: GO_VERSION=1.14.15 ./golang.sh test
+
+      - name: Fix file permissions
+        run: ./golang.sh chown
+
+      - name: Go modules test 1.15
+        run: GO_VERSION=1.15.12 ./golang.sh test
+
+      - name: Fix file permissions
+        run: ./golang.sh chown
+
+      - name: Go modules test 1.16
+        run: GO_VERSION=1.16.4 ./golang.sh test
