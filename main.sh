@@ -202,6 +202,8 @@ for i; do
         -z|--gzip) compression=z ; shift ;;
         --no) compression= ; shift ;;
         test)
+            rm -f "${DESTDIR}"/go/dl/go/test[1-9].*
+
             dl_111module test1 bin golang.org/x/example/hello
             dl_111module test2 on rsc.io/quote@v1.5.2
             ;;

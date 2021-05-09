@@ -31,15 +31,6 @@ elif [[ "$1" == "chown" ]]; then
 elif [[ "$1" == "test" ]]; then
     # unit tests
 
-    rm -f dl/go/test[1-9].*
-
-    get_go_version()
-    {
-        local IFS=.
-        local num_go_version=($GO_VERSION)
-        printf "%02d.%02d.%02d" ${num_go_version[0]} ${num_go_version[1]} ${num_go_version[2]}
-    }
-
     # download only modules for the tests
     docker run --rm -i -v "$PWD/dl:/dl" go-pkgs-dl /main.sh test
 
