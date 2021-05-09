@@ -33,6 +33,13 @@ elif [[ "$1" == "test" ]]; then
 
     rm -f dl/go/test[1-9].*
 
+    get_go_version()
+    {
+        local IFS=.
+        local num_go_version=($GO_VERSION)
+        printf "%02d.%02d.%02d" ${num_go_version[0]} ${num_go_version[1]} ${num_go_version[2]}
+    }
+
     # download only modules for the tests
     docker run --rm -i -v "$PWD/dl:/dl" go-pkgs-dl /main.sh test
 
@@ -40,16 +47,17 @@ elif [[ "$1" == "test" ]]; then
     echo "Testing Go without Internet connection"
     echo
 
-    # test compiled module
+    #  test1: test compiled module
     docker run --rm -i -v "$PWD/dl:/dl" --network none go-pkgs-dl sh -c \
-                "/dl/go/test1.sh -h;
-                 /dl/go/test1.sh -i;
-                 /dl/go/test1.sh -m;
-                 /dl/go/test1.sh;
-                 hello && echo '\033[32mtest 1 is ok\033[0m'"
+        "/dl/go/test1.sh -h;
+            /dl/go/test1.sh -i;
+            /dl/go/test1.sh -m;
+            /dl/go/test1.sh;
+            hello && echo '\033[32mtest 1 is ok\033[0m'"
 
-    # test build with module (in GOPATH mode)
-    (cat <<'EOF'
+    # test2: test build with module (in GOPATH mode)
+    if [[ $(get_go_version) < "01.16.00" ]]; then
+        (cat <<'EOF'
 package main
 import (
     "fmt"
@@ -60,12 +68,15 @@ func main() {
     fmt.Println("\033[32mtest 2 is ok\033[0m")
 }
 EOF
-) | docker run --rm -i -v "$PWD/dl:/dl" --network none -w /work go-pkgs-dl sh -c "cat > hello.go ; \
+        ) | docker run --rm -i -v "$PWD/dl:/dl" --network none -w /work go-pkgs-dl sh -c "cat > hello.go ; \
                 cat /dl/go/test2.sh | sh; \
                 go env -w GO111MODULE=auto ; \
                 go build hello.go; ls -l hello ; ./hello"
+    else
+        echo -e "\033[32mtest 2 deprecated with Go ${GO_VERSION}\033[0m"
+    fi
 
-    # test build with module (in Go module mode)
+    # test3: test build with module (in Go module mode)
     (cat <<'EOF'
 package main
 import (
@@ -77,12 +88,13 @@ func main() {
     fmt.Println("\033[32mtest 3 is ok\033[0m")
 }
 EOF
-) | docker run --rm -i -v "$PWD/dl:/dl" --network none -w /work go-pkgs-dl sh -c "cat > main.go ; \
-    cat /dl/go/test3.sh | sh; \
-    go env -w GO111MODULE=on ; \
-    go mod init hello ; \
-    echo 'require rsc.io/quote v1.5.2' >> go.mod ;\
-    go build ; ls -l hello ; ./hello"
+    ) | docker run --rm -i -v "$PWD/dl:/dl" --network none -w /work go-pkgs-dl sh -c "cat > main.go ; \
+            cat /dl/go/test3.sh | sh; \
+            go env -w GO111MODULE=on ; \
+            go mod init hello ; \
+            echo 'require rsc.io/quote v1.5.2' >> go.mod ;\
+            go mod tidy ; \
+            go build ; ls -l hello ; ./hello"
 
 else
     # download Go modules
