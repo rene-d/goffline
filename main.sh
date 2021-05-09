@@ -58,7 +58,7 @@ dl_111module()
     bin_arch="${GOPATH}/bin/$(go env GOHOSTOS)_$(go env GOHOSTARCH)"
     rm -rf "${bin_arch}"
     mkdir -p "${bin_arch}"
-    find "${GOPATH}/bin" -maxdepth 1 -type f | xargs -i+ mv -f + "${bin_arch}"
+    find "${GOPATH}/bin" -maxdepth 1 -type f | xargs -I+ mv -f + "${bin_arch}"
 
     # Retrieve the list of modules/version
     local mods

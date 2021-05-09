@@ -13,7 +13,7 @@ if [[ ! -f /.dockerenv ]]; then
         shift
     fi
 
-    "$(dirname "$BASH_SOURCE")/golang.sh" build_only
+    "$(dirname "${BASH_SOURCE[0]}")/golang.sh" build_only
     exec docker run --rm -ti -v "$PWD/dl:/dl" ${list} -w / ${list} go-pkgs-dl /vscode.sh
 fi
 
