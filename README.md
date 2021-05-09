@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/rene-d/goffline/actions/workflows/go_test.yml/badge.svg)](https://github.com/rene-d/goffline/actions/workflows/go_test.yml)
 
-How to use Go modules offline, without a GOPROXY like [Athens](https://github.com/gomods/athens) or a bunch of `git clone` and with keeping checksums verification.
+How to use Go modules offline, without a GOPROXY like [Athens](https://github.com/gomods/athens) or a bunch of `git clone` and with keeping [checksums verification](https://sum.golang.org).
 
 Binaries for both architectures `amd64` and `arm64` are built during the download step, and the right one extracted during the installation step.
 
@@ -30,12 +30,16 @@ Make a self-extracting archive of Go modules used by the [Go extension](https://
 ./golang.sh vscode-bin
 ```
 
-Download current stable version of Visual Studio Code, some extensions and the remote server (for [remote development](https://code.visualstudio.com/docs/remote/remote-overview)):
+Download current stable version of [Visual Studio Code](https://code.visualstudio.com), some extensions and the remote server (for [remote development](https://code.visualstudio.com/docs/remote/remote-overview)):
 
 ```bash
 ./vscode.sh [extension list]
 ```
 
+## Configuration
+
 See [config.txt](./config.txt) for an example of module and extenion list.
+
+## Test
 
 There is a unit test for Go downloads, run into a container with no Internet access (`--network none`).

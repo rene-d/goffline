@@ -10,14 +10,14 @@ set -ue
 
 compression=J
 
-now=$(date +%s)
-tag_date="$(date --date=@${now} +%Y%m%d%H%M%S)"
-tag_date_iso8601="$(date --date=@${now} --iso-8601=seconds)"
+now="$(date +%s)"
+tag_date="$(date --date=@"${now}" +%Y%m%d%H%M%S)"
+tag_date_iso8601="$(date --date=@"${now}" --iso-8601=seconds)"
 
 dl_111module()
 {
-    local name=$1
-    local mode=$2
+    local name="$1"
+    local mode="$2"
     shift 2
 
     # special mode "bin" archives only binaries
@@ -32,14 +32,14 @@ dl_111module()
 
     # the basename contains Go version and date, except for the unit tests
     if [[ ${name} =~ ^test[1-9]$ ]]; then
-        basename=${name}
+        basename="${name}"
     else
         basename="${name}-$(go version | sed -nr 's/^.* (go[0-9\.]+) .*$/\1/p')-${tag_date}"
     fi
 
     unset GOROOT
     export GOPATH="/tmp/cache/${name}-111GOPATH"
-    export GO111MODULE=${mode}
+    export GO111MODULE="${mode}"
 
     mkdir -p "${DESTDIR}/logs/"
     rm -f "${DESTDIR}/logs/${basename}.log"
@@ -49,16 +49,16 @@ dl_111module()
     env GOARCH=amd64 go get $* |& tee -a "${DESTDIR}/logs/${basename}.log"
 
     # permissions for all
-    chmod -R a+rX ${GOPATH}
+    chmod -R a+rX "${GOPATH}"
 
     # by default,
     # host arch binaries are into $GOPATH/bin/
     # other arch binaries are into $GOPATH/bin/linux_<arch>/
     echo "Fixing bin dir with host arch"
-    bin_arch=${GOPATH}/bin/$(go env GOHOSTOS)_$(go env GOHOSTARCH)
-    rm -rf ${bin_arch}
-    mkdir -p ${bin_arch}
-    find ${GOPATH}/bin -maxdepth 1 -type f | xargs -i+ mv -f + ${bin_arch}
+    bin_arch="${GOPATH}/bin/$(go env GOHOSTOS)_$(go env GOHOSTARCH)"
+    rm -rf "${bin_arch}"
+    mkdir -p "${bin_arch}"
+    find "${GOPATH}/bin" -maxdepth 1 -type f | xargs -I+ mv -f + "${bin_arch}"
 
     # Retrieve the list of modules/version
     local mods
@@ -68,15 +68,15 @@ dl_111module()
         mods=($(cd ${GOPATH}/pkg/mod/cache/download && find . -name '*.zip' | cut -d/ -f2- | sed -r 's,/@v/(.*)\.zip$,@\1,' | sed -e 's/!\([a-z]\)/\u\1/' ))
     fi
     for i in ${mods[*]}; do
-        echo $i | sed 's/@/ /' >> "${GOPATH}/gomods.txt"
+        echo "$i" | sed 's/@/ /' >> "${GOPATH}/gomods.txt"
     done
 
-    echo mods=${mods[@]}
+    echo "Module list: ${mods[@]}"
 
     echo "Making archive"
-    tar -C "${GOPATH}" -c${compression}f /tmp/go-modules.tar ${arch_dirs}
+    tar -C "${GOPATH}" -c${compression}f /tmp/go-modules.tar "${arch_dirs}"
 
-    local sha256=$(sha256sum -b < /tmp/go-modules.tar | cut -f1 -d' ')
+    local sha256="$(sha256sum -b < /tmp/go-modules.tar | cut -f1 -d' ')"
 
     local filename="${basename}.sh"
 
@@ -87,7 +87,7 @@ dl_111module()
 #!/bin/sh
 if [ "\$1" = "-m" ]; then
     for i in ${mods[*]}
-    do echo \$i; done
+    do echo "\$i"; done
     exit
 elif [ "\$1" = "-i" ]; then
     echo "${tag_date_iso8601}"
@@ -143,15 +143,15 @@ EOF
 
 get_latest_release()
 {
-    local repo=$1
-    local asset=$2
+    local repo="$1"
+    local asset="$2"
     local url
 
     url=$(curl -s "https://api.github.com/repos/${repo}/releases/latest" |
           jq -r '.assets | map(select(.name | contains("'${asset}'")).browser_download_url)[]')
 
     echo -e "tool: \033[1;36m$(basename ${url})\033[0m"
-    wget -nv -nc -P "${DESTDIR}/go" ${url}
+    wget -nv -nc -P "${DESTDIR}/go" "${url}"
 }
 
 tools()
@@ -172,25 +172,25 @@ filter_important()
     local m=
     while read line; do
         if [[ $line =~ "importPath: '" ]] ; then
-            if [[ $m ]]; then echo $m; fi
-            m=$(echo $line | cut -d\' -f2)
+            if [[ $m ]]; then echo "$m"; fi
+            m=$(echo "$line" | cut -d\' -f2)
         fi
         if [[ $line =~ "replacedByGopls: true" ]]; then echo >&2 "  skip $m (replaced by gopls)"; m=; fi
         if [[ $line =~ "isImportant: false" ]] && [[ $m ]]; then echo >&2 "  skip $m (non important)"; m=; fi
     done
-    if [[ $m ]]; then echo $m; fi
+    if [[ $m ]]; then echo "$m"; fi
 }
 
 parse_go_config()
 {
     local section=
     if [[ $1 ]]; then
-        section=$1
+        section="$1"
     fi
     awk '{ if ($1 ~ /^#/) next; if ($1 ~ /^\[/) section=$1; else if ($1 !~ /^$/) if (section=="[go]" || section=="['${section}']" ) print $1  }'
 }
 
-mkdir -p ${DESTDIR}/go
+mkdir -p "${DESTDIR}/go"
 
 for i; do
     case "$i" in
