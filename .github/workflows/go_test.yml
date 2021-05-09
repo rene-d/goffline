@@ -29,8 +29,14 @@ jobs:
       - name: Go modules test 1.14
         run: GO_VERSION=1.14.15 ./golang.sh test
 
+      - name: Fix file permissions
+        run: ./golang.sh chown
+
       - name: Go modules test 1.15
         run: GO_VERSION=1.15.12 ./golang.sh test
+
+      - name: Fix file permissions
+        run: ./golang.sh chown
 
       - name: Go modules test 1.16
         run: GO_VERSION=1.16.4 ./golang.sh test
