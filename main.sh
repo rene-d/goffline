@@ -82,13 +82,6 @@ dl_111module()
     # as we have downloaded the both architectures, the extract script should deal with that
     cat <<EOF > "${DESTDIR}/go/${filename}"
 #!/bin/sh
-ver=\$(go version | sed -nr 's/^.*go([0-9.]+) .*/\1/p')
-if [ "\${ver}" != "${GOLANG_VERSION}" ]; then
-    echo >&2 "Go version mismatch"
-    echo >&2 "Found:    \${ver}"
-    echo >&2 "Expected: ${GOLANG_VERSION}"
-    exit 2
-fi
 if [ "\$1" = "-m" ]; then
     for i in ${mods[*]}
     do echo "\$i"; done
@@ -117,7 +110,14 @@ elif [ -n "\$1" ]; then
 else
     fn()
     {
-        arch=\$(go env GOHOSTARCH)
+        local ver=\$(go version | sed -nr 's/^.*go([0-9.]+) .*/\1/p')
+        if [ "\${ver}" != "${GOLANG_VERSION}" ]; then
+            echo >&2 "Go version mismatch"
+            echo >&2 "Found:    \${ver}"
+            echo >&2 "Expected: ${GOLANG_VERSION}"
+            exit 2
+        fi
+        local arch=\$(go env GOHOSTARCH)
         if [ \${arch} = amd64 ]; then exclude=arm64; else exclude=amd64; fi
         tar -C \$(go env GOPATH) \\
             -x${compression} \\
