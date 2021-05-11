@@ -185,6 +185,14 @@ filter_important()
     if [[ $m ]]; then echo "$m"; fi
 }
 
+adapt_version()
+{
+    # golangci-lint v1.40+ requires Go 1.15
+    if [[ $(go version) =~ go1.14. ]]; then
+        sed -r 's?(github.com/golangci/golangci-lint.*\b)?\1@v1.39.0?'
+    fi
+}
+
 parse_go_config()
 {
     local section=
@@ -215,21 +223,21 @@ for i; do
         vscode-full)
             # fetch the list of tools into the the source code of the extension
             vscode=($(curl -sL https://raw.githubusercontent.com/golang/vscode-go/master/src/goTools.ts | \
-                      sed "s/^.*importPath: '\(.*\)',.*$/\1/p;d"))
+                      sed "s/^.*importPath: '\(.*\)',.*$/\1/p;d" | adapt_version))
             dl_111module vscode-full on ${vscode[*]}
             ;;
         vscode)
             # fetch the list of tools into the the source code of the extension
             # retains only important extensions and those not replaced by the language server (gopls)
             vscode=($(curl -sL https://raw.githubusercontent.com/golang/vscode-go/master/src/goTools.ts | \
-                      filter_important))
+                      filter_important | adapt_version))
             dl_111module vscode on ${vscode[*]}
             ;;
         vscode-bin)
             # fetch the list of tools into the the source code of the extension
             # retains only important extensions and those not replaced by the language server (gopls)
             vscode=($(curl -sL https://raw.githubusercontent.com/golang/vscode-go/master/src/goTools.ts | \
-                      filter_important))
+                      filter_important | adapt_version))
             dl_111module vscode-bin bin ${vscode[*]}
             ;;
         tools)
