@@ -25,7 +25,12 @@ elif [[ "$1" == "rshell" ]]; then
     exec docker run --network none --rm -ti -v "$PWD:/wd" -w /wd go-pkgs-dl
 
 elif [[ "$1" == "chown" ]]; then
-    exec docker run --rm -i -v "$PWD/dl:/dl" go-pkgs-dl chown -R "$(id -u):$(id -g)" /dl
+    # chown files if Docker is ran rootfull
+
+    if ! find "$PWD/dl" -user root -print -quit | grep -q "." ; then
+        echo "Change owner to $(id -un)"
+        exec docker run --rm -i -v "$PWD/dl:/dl" go-pkgs-dl chown -R "$(id -u):$(id -g)" /dl
+    fi
 
 elif [[ "$1" == "test" ]]; then
     # unit tests
