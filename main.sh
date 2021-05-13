@@ -24,10 +24,10 @@ dl_111module()
     shift 2
 
     # special mode "bin" archives only binaries
-    local arch_dirs=.
+    local archive_mode=mods
     if [[ ${mode} == bin ]]; then
         mode=on
-        arch_dirs=bin
+        archive_mode=bin
     fi
 
     echo -e "Processing \033[1;33m${name}\033[0m set in mode \033[1;33m${mode}\033[0m with:"
@@ -43,7 +43,7 @@ dl_111module()
     fi
 
     unset GOROOT
-    export GOPATH="/tmp/cache/${name}-111GOPATH"
+    export GOPATH="/tmp/cache/gopath"
     export GO111MODULE="${mode}"
 
     # get the modules twice (everything goes under $GOPATH)
@@ -53,9 +53,9 @@ dl_111module()
     # permissions for all
     chmod -R a+rX "${GOPATH}"
 
-    # by default,
-    # host arch binaries are into $GOPATH/bin/
-    # other arch binaries are into $GOPATH/bin/linux_<arch>/
+    # by default:
+    # - host arch binaries are into $GOPATH/bin/
+    # - foreign arch binaries are into $GOPATH/bin/linux_<arch>/
     echo "Fixing bin dir with host arch"
     bin_arch="${GOPATH}/bin/$(go env GOHOSTOS)_$(go env GOHOSTARCH)"
     rm -rf "${bin_arch}"
@@ -75,17 +75,18 @@ dl_111module()
     echo "# tag: ${tag_date}" > "${GOPATH}/gomods.txt.${tag_date}"
     echo "# date: ${tag_date_iso8601}" >> "${GOPATH}/gomods.txt.${tag_date}"
     echo "# goffline: ${GOFFLINE_VERSION}" >> "${GOPATH}/gomods.txt.${tag_date}"
-    echo >> "${GOPATH}/gomods.txt"
+    echo >> "${GOPATH}/gomods.txt.${tag_date}"
     for i in ${mods[*]}; do
         echo "$i" | sed 's/@/ /' >> "${GOPATH}/gomods.txt.${tag_date}"
     done
     chmod 444 "${GOPATH}/gomods.txt.${tag_date}"
 
     echo "Making archive"
-    tar -C "${GOPATH}" -c${compression}f /tmp/go-modules.tar "${arch_dirs}" "gomods.txt.${tag_date}"
-
-    # local sha256="$(sha256sum -b < /tmp/go-modules.tar | cut -f1 -d' ')"
-    # local size="$(stat --format %s /tmp/go-modules.tar)"
+    if [[ ${archive_mode} == bin ]]; then
+        tar -C "${GOPATH}" -c${compression}f /tmp/go-modules.tar bin
+    else
+        tar -C "${GOPATH}" -c${compression}f /tmp/go-modules.tar $(ls ${GOPATH})
+    fi
 
     local filename="${basename}.sh"
 
@@ -143,9 +144,11 @@ else
             --no-same-owner \\
             --transform="s,bin/linux_\${arch},bin," \\
             --exclude="bin/linux_\${exclude}*"
-        cd \$(go env GOPATH)
-        cat gomods.txt.* | sort | grep -v "^# [dg]" > gomods.txt
-        chmod 444 gomods.txt
+        if [ ${archive_mode} = mods ]; then
+            cd \$(go env GOPATH)
+            cat gomods.txt.* | sort | grep -v "^# [dg]" > gomods.txt
+            chmod 444 gomods.txt
+        fi
     }
 fi
 base64 -d <<'#EOF#' | fn
@@ -160,11 +163,7 @@ EOF
     cd "${DESTDIR}/go"
     sha256sum -b "${filename}" > "${filename}.sha256"
 
-    # # add info file
-    # echo "# GO111MODULE=${mode}" > "${basename}.list"
-    # echo "# Size: $(stat --format %s ""${filename}"")" >> "${basename}.list"
-    # echo "# SHA-256: ${sha256}" >> "${basename}.list"
-    # for i in "$@"; do echo "$i"; done >> "${basename}.list"
+    rm -rf "${GOPATH}"
 
     # we're done
     echo "Done"
