@@ -13,6 +13,7 @@ compression=J
 now="$(date +%s)"
 tag_date="$(date --date=@"${now}" +%Y%m%d%H%M%S)"
 tag_date_iso8601="$(date --date=@"${now}" --iso-8601=seconds)"
+test_count=0
 
 dl_111module()
 {
@@ -33,6 +34,8 @@ dl_111module()
     # the basename contains Go version and date, except for the unit tests
     if [[ ${name} =~ ^test[1-9]$ ]]; then
         basename="${name}"
+        test_count=$((test_count + 1))
+        local tag_date="${tag_date}.${test_count}"
     else
         basename="${name}-$(go version | sed -nr 's/^.* (go[0-9\.]+) .*$/\1/p')-${tag_date}"
     fi
@@ -62,16 +65,21 @@ dl_111module()
     if [[ ${mode} != on ]]; then
         mods=($*)
     else
-        mods=($(cd ${GOPATH}/pkg/mod/cache/download && find . -name '*.zip' | cut -d/ -f2- | sed -r 's,/@v/(.*)\.zip$,@\1,' | sed -e 's/!\([a-z]\)/\u\1/' ))
+        mods=($(cd ${GOPATH}/pkg/mod/cache/download && find . -name '*.zip' | cut -d/ -f2- | sed -r 's,/@v/(.*)\.zip$,@\1,' | sed -e 's/!\([a-z]\)/\u\1/' | sort ))
     fi
-    for i in ${mods[*]}; do
-        echo "$i" | sed 's/@/ /' >> "${GOPATH}/gomods.txt"
-    done
-
     echo "Module list: ${mods[@]}"
 
+    # save the module list info a text file
+    echo "# tag: ${tag_date}" > "${GOPATH}/gomods.txt.${tag_date}"
+    echo "# date: ${tag_date_iso8601}" >> "${GOPATH}/gomods.txt.${tag_date}"
+    echo >> "${GOPATH}/gomods.txt"
+    for i in ${mods[*]}; do
+        echo "$i" | sed 's/@/ /' >> "${GOPATH}/gomods.txt.${tag_date}"
+    done
+    chmod 444 "${GOPATH}/gomods.txt.${tag_date}"
+
     echo "Making archive"
-    tar -C "${GOPATH}" -c${compression}f /tmp/go-modules.tar "${arch_dirs}"
+    tar -C "${GOPATH}" -c${compression}f /tmp/go-modules.tar "${arch_dirs}" "gomods.txt.${tag_date}"
 
     local sha256="$(sha256sum -b < /tmp/go-modules.tar | cut -f1 -d' ')"
 
@@ -95,6 +103,11 @@ elif [ "\$1" = "-t" ]; then
     {
         tar -t${compression}
     }
+elif [ "\$1" = "-tv" ]; then
+    fn()
+    {
+        tar -tv${compression}
+    }
 elif [ "\$1" = "-x" ]; then
     fn()
     {
@@ -102,10 +115,10 @@ elif [ "\$1" = "-x" ]; then
     }
 elif [ -n "\$1" ]; then
     echo "Usage: \$0 [option]"
-    echo "  -x   extract to stdin"
-    echo "  -t   list content"
-    echo "  -i   print download date and SHA-256 of the *embedded* archive"
-    echo "  -m   print modules list"s
+    echo "  -x     extract to stdin"
+    echo "  -t[v]  list content"
+    echo "  -i     print download date and SHA-256 of the *embedded* archive"
+    echo "  -m     print modules list"s
     exit
 else
     fn()
@@ -124,23 +137,30 @@ else
             --no-same-owner \\
             --transform="s,bin/linux_\${arch},bin," \\
             --exclude="bin/linux_\${exclude}*"
+        cd \$(go env GOPATH)
+        cat gomods.txt.* | sort | grep -v "^# date:" > gomods.txt
+        chmod 444 gomods.txt
     }
 fi
 base64 -d <<'#EOF#' | fn
 EOF
 
+    # append the archive encoded in Base64
     base64 /tmp/go-modules.tar >> "${DESTDIR}/go/${filename}"
     echo '#EOF#' >> "${DESTDIR}/go/${filename}"
     chmod a+x "${DESTDIR}/go/${filename}"
 
+    # add checksum file
     cd "${DESTDIR}/go"
     sha256sum -b "${filename}" > "${filename}.sha256"
 
+    # add info file
     echo "# GO111MODULE=${mode}" > "${basename}.list"
     echo "# Size: $(stat --format %s ""${filename}"")" >> "${basename}.list"
     echo "# SHA-256: ${sha256}" >> "${basename}.list"
     for i in "$@"; do echo "$i"; done >> "${basename}.list"
 
+    # we're done
     echo "Done"
     echo
 }
@@ -214,6 +234,8 @@ for i; do
 
             dl_111module test1 bin golang.org/x/example/hello
             dl_111module test2 on rsc.io/quote@v1.5.2
+            dl_111module test3 on golang.org/x/text@v0.3.3 golang.org/x/example@v0.0.0-20210407023211-09c3a5e06b5d
+            # nota: golang.org/x/text@v0.3.3 is mysteriously required when golang.org/x/example and rsc.io are both required
             ;;
         mods)
             # download in the new Go modules mode
