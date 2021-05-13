@@ -216,6 +216,8 @@ adapt_version()
     # golangci-lint v1.40+ requires Go 1.15
     if [[ $(go version) =~ go1.14. ]]; then
         sed -r 's?(github.com/golangci/golangci-lint.*\b)?\1@v1.39.0?'
+    else
+        cat
     fi
 }
 
