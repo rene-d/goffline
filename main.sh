@@ -215,11 +215,7 @@ adapt_version()
 
 parse_go_config()
 {
-    local section=
-    if [[ $1 ]]; then
-        section="$1"
-    fi
-    awk '{ if ($1 ~ /^#/) next; if ($1 ~ /^\[/) section=$1; else if ($1 !~ /^$/) if (section=="[go]" || section=="['${section}']" ) print $1  }'
+    awk '{ if ($1 ~ /^#/) next; if ($1 ~ /^\[/) section=$1; else if ($1 !~ /^$/) if (section=="[go]") print $1 }'
 }
 
 mkdir -p "${DESTDIR}/go"
@@ -239,7 +235,7 @@ for i; do
             ;;
         mods)
             # download in the new Go modules mode
-            packages=($(cat /config.txt | parse_go_config gomodules))
+            packages=($(cat /config.txt | parse_go_config))
             dl_111module mods on ${packages[*]}
             ;;
         vscode-full)

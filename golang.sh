@@ -27,7 +27,6 @@ elif [[ "$1" == "rshell" ]]; then
 elif [[ "$1" == "chown" ]]; then
     exec docker run --rm -i -v "$PWD/dl:/dl" go-pkgs-dl chown -R "$(id -u):$(id -g)" /dl
 
-
 elif [[ "$1" == "test" ]]; then
     # unit tests
 
