@@ -8,6 +8,8 @@ fi
 
 set -ue
 
+GOFFLINE_VERSION=${GOFFLINE_VERSION:=dev}
+
 compression=J
 
 now="$(date +%s)"
@@ -72,6 +74,7 @@ dl_111module()
     # save the module list info a text file
     echo "# tag: ${tag_date}" > "${GOPATH}/gomods.txt.${tag_date}"
     echo "# date: ${tag_date_iso8601}" >> "${GOPATH}/gomods.txt.${tag_date}"
+    echo "# goffline: ${GOFFLINE_VERSION}" >> "${GOPATH}/gomods.txt.${tag_date}"
     echo >> "${GOPATH}/gomods.txt"
     for i in ${mods[*]}; do
         echo "$i" | sed 's/@/ /' >> "${GOPATH}/gomods.txt.${tag_date}"
@@ -81,7 +84,8 @@ dl_111module()
     echo "Making archive"
     tar -C "${GOPATH}" -c${compression}f /tmp/go-modules.tar "${arch_dirs}" "gomods.txt.${tag_date}"
 
-    local sha256="$(sha256sum -b < /tmp/go-modules.tar | cut -f1 -d' ')"
+    # local sha256="$(sha256sum -b < /tmp/go-modules.tar | cut -f1 -d' ')"
+    # local size="$(stat --format %s /tmp/go-modules.tar)"
 
     local filename="${basename}.sh"
 
@@ -95,8 +99,10 @@ if [ "\$1" = "-m" ]; then
     do echo "\$i"; done
     exit
 elif [ "\$1" = "-i" ]; then
-    echo "${tag_date_iso8601}"
-    echo "${sha256}"
+    echo "version: $(go version)"
+    echo "tag: ${tag_date}"
+    echo "date: ${tag_date_iso8601}"
+    echo "goffline: ${GOFFLINE_VERSION}"
     exit
 elif [ "\$1" = "-t" ]; then
     fn()
@@ -117,7 +123,7 @@ elif [ -n "\$1" ]; then
     echo "Usage: \$0 [option]"
     echo "  -x     extract to stdin"
     echo "  -t[v]  list content"
-    echo "  -i     print download date and SHA-256 of the *embedded* archive"
+    echo "  -i     display information"
     echo "  -m     print modules list"s
     exit
 else
@@ -138,7 +144,7 @@ else
             --transform="s,bin/linux_\${arch},bin," \\
             --exclude="bin/linux_\${exclude}*"
         cd \$(go env GOPATH)
-        cat gomods.txt.* | sort | grep -v "^# date:" > gomods.txt
+        cat gomods.txt.* | sort | grep -v "^# [dg]" > gomods.txt
         chmod 444 gomods.txt
     }
 fi
@@ -154,11 +160,11 @@ EOF
     cd "${DESTDIR}/go"
     sha256sum -b "${filename}" > "${filename}.sha256"
 
-    # add info file
-    echo "# GO111MODULE=${mode}" > "${basename}.list"
-    echo "# Size: $(stat --format %s ""${filename}"")" >> "${basename}.list"
-    echo "# SHA-256: ${sha256}" >> "${basename}.list"
-    for i in "$@"; do echo "$i"; done >> "${basename}.list"
+    # # add info file
+    # echo "# GO111MODULE=${mode}" > "${basename}.list"
+    # echo "# Size: $(stat --format %s ""${filename}"")" >> "${basename}.list"
+    # echo "# SHA-256: ${sha256}" >> "${basename}.list"
+    # for i in "$@"; do echo "$i"; done >> "${basename}.list"
 
     # we're done
     echo "Done"

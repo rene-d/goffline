@@ -108,5 +108,6 @@ else
         set -- mods
     fi
 
-    docker run --init -e TINI_KILL_PROCESS_GROUP=1 --rm -i -v "$PWD/dl:/dl" ${list} go-pkgs-dl /main.sh $*
+    docker run --init -e TINI_KILL_PROCESS_GROUP=1 --rm -i -v "$PWD/dl:/dl" \
+        -e "GOFFLINE_VERSION=$(git describe --tags)" ${list} go-pkgs-dl /main.sh $*
 fi
