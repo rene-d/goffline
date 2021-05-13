@@ -152,7 +152,7 @@ def make_remote(
     print()
 
 
-def load_conf(conf_file):
+def load_conf(download_dir, conf_file):
     """ Use a configuration file to build the host and remote archives. """
 
     config = configparser.ConfigParser(allow_no_value=True)
@@ -161,7 +161,6 @@ def load_conf(conf_file):
     else:
         config.read(conf_file)
 
-    download_dir = Path("dl")
     commit = None
     version = None
 
@@ -217,7 +216,7 @@ def main():
     args = parser.parse_args()
 
     if args.f:
-        return load_conf(args.f)
+        return load_conf(Path(args.download_dir), args.f)
 
     if args.host_extension:
         make_host(Path(args.download_dir), args.vscode_version, args.host_extension)
