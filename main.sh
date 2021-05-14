@@ -196,6 +196,11 @@ tools()
     get_latest_release gotestyourself/gotestsum _linux_arm64.tar.gz
 }
 
+filter_all()
+{
+    sed "s/^.*importPath: '\(.*\)',.*$/\1/p;d"
+}
+
 filter_important()
 {
     local m=
@@ -245,26 +250,26 @@ for i; do
             packages=($(cat /config.txt | parse_go_config))
             dl_111module mods on ${packages[*]}
             ;;
-        vscode-full)
+
+        vscode*)
+            if [[ $i =~ -full ]]; then
+                filter=filter_all
+            else
+                filter=filter_important
+            fi
+            if [[ $i =~ -bin ]]; then
+                mode=bin
+            else
+                mode=on
+            fi
+
             # fetch the list of tools into the the source code of the extension
             vscode=($(curl -sL https://raw.githubusercontent.com/golang/vscode-go/master/src/goTools.ts | \
-                      sed "s/^.*importPath: '\(.*\)',.*$/\1/p;d" | adapt_version))
-            dl_111module vscode-full on ${vscode[*]}
+                      $filter | sort -u | adapt_version))
+
+            dl_111module $i $mode ${vscode[*]}
             ;;
-        vscode)
-            # fetch the list of tools into the the source code of the extension
-            # retains only important extensions and those not replaced by the language server (gopls)
-            vscode=($(curl -sL https://raw.githubusercontent.com/golang/vscode-go/master/src/goTools.ts | \
-                      filter_important | adapt_version))
-            dl_111module vscode on ${vscode[*]}
-            ;;
-        vscode-bin)
-            # fetch the list of tools into the the source code of the extension
-            # retains only important extensions and those not replaced by the language server (gopls)
-            vscode=($(curl -sL https://raw.githubusercontent.com/golang/vscode-go/master/src/goTools.ts | \
-                      filter_important | adapt_version))
-            dl_111module vscode-bin bin ${vscode[*]}
-            ;;
+
         tools)
             tools
             ;;
