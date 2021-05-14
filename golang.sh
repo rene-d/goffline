@@ -109,5 +109,5 @@ else
     fi
 
     docker run --init -e TINI_KILL_PROCESS_GROUP=1 --rm -i -v "$PWD/dl:/dl" \
-        -e "GOFFLINE_VERSION=$(git describe --tags)" ${list} go-pkgs-dl /main.sh $*
+        -e "GOFFLINE_VERSION=$(git describe --always --tags)" ${list} go-pkgs-dl /main.sh $*
 fi
