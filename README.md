@@ -30,6 +30,8 @@ Make a self-extracting archive of Go modules used by the [Go extension](https://
 ./golang.sh vscode-bin
 ```
 
+Nota: the program tries to dermine the needed tools, that is pretty difficult and hazardous. It tries to analyse the [goTools.go](https://github.com/golang/vscode-go/blob/master/src/goTools.ts), but without making the sophisticated checks of versions and needs.
+
 Download current stable version of [Visual Studio Code](https://code.visualstudio.com), some extensions and the remote server (for [remote development](https://code.visualstudio.com/docs/remote/remote-overview)):
 
 ```bash

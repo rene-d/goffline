@@ -201,7 +201,7 @@ filter_all()
     sed "s/^.*importPath: '\(.*\)',.*$/\1/p;d"
 }
 
-filter_important()
+filter_gopls()
 {
     local m=
     while read line; do
@@ -210,7 +210,7 @@ filter_important()
             m=$(echo "$line" | cut -d\' -f2)
         fi
         if [[ $line =~ "replacedByGopls: true" ]]; then echo >&2 "  skip $m (replaced by gopls)"; m=; fi
-        if [[ $line =~ "isImportant: false" ]] && [[ $m ]]; then echo >&2 "  skip $m (non important)"; m=; fi
+#        if [[ $line =~ "isImportant: false" ]] && [[ $m ]]; then echo >&2 "  skip $m (non important)"; m=; fi
     done
     if [[ $m ]]; then echo "$m"; fi
 }
@@ -255,7 +255,7 @@ for i; do
             if [[ $i =~ -full ]]; then
                 filter=filter_all
             else
-                filter=filter_important
+                filter=filter_gopls
             fi
             if [[ $i =~ -bin ]]; then
                 mode=bin
