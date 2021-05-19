@@ -87,8 +87,9 @@ func main() {
 EOF
     ) | docker run --init -e TINI_KILL_PROCESS_GROUP=1 --rm -i -v "$PWD/dl:/dl" --network none -w /work go-pkgs-dl sh -c "
             cat > main.go ;
-            cat /dl/go/test2.sh | sh;
-            cat /dl/go/test3.sh | sh;
+            /diffmods.sh /dl/go/test2.sh /dl/go/test3.sh ;
+            cat /dl/go/test2.sh | sh ;
+            cat /dl/go/test3.sh | sh ;
             ls -l /go;
             go env -w GO111MODULE=on ;
             go mod init hello ;

@@ -275,9 +275,9 @@ main()
             test)
                 rm -f "${DESTDIR}"/go/dl/go/test[1-9].*
 
-                dl_111module test1 bin golang.org/x/example/hello
-                dl_111module test2 on rsc.io/quote@v1.5.2
-                dl_111module test3 on golang.org/x/text@v0.3.3 golang.org/x/example@v0.0.0-20210407023211-09c3a5e06b5d
+                compression=J dl_111module test1 bin golang.org/x/example/hello
+                compression=z dl_111module test2 on rsc.io/quote@v1.5.2
+                compression=j dl_111module test3 on golang.org/x/text@v0.3.3 golang.org/x/example@v0.0.0-20210407023211-09c3a5e06b5d
                 # nota: golang.org/x/text@v0.3.3 is mysteriously required when golang.org/x/example and rsc.io are both required
                 ;;
 
