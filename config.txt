@@ -1,10 +1,17 @@
 # configuration file
 
+# list of Go modules, optionally with the version tag
 [go]
 golang.org/x/example/hello
 
+# extensions that should be packaged for the host
 [vscode:host]
 ms-vscode-remote.remote-ssh
 
+# extensions that should be packaged for the remote
 [vscode:remote]
 golang.go
+
+# tools: assets on github releases
+[gotools]
+golangci/golangci-lint
