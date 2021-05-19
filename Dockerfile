@@ -11,3 +11,5 @@ RUN apt-get -qq update && \
 COPY *.sh config.txt /
 
 ENV DESTDIR=/dl
+
+ENV GO111MODULE=on
