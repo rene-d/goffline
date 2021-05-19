@@ -17,18 +17,12 @@ tag_date="$(date --date=@"${now}" +%Y%m%d%H%M%S)"
 tag_date_iso8601="$(date --date=@"${now}" --iso-8601=seconds)"
 test_count=0
 
+
 dl_111module()
 {
     local name="$1"
-    local mode="$2"
+    local mode="$2"  # possible values: on bin
     shift 2
-
-    # special mode "bin" archives only binaries
-    local archive_mode=mods
-    if [[ ${mode} == bin ]]; then
-        mode=on
-        archive_mode=bin
-    fi
 
     echo -e "Processing \033[1;33m${name}\033[0m set in mode \033[1;33m${mode}\033[0m with:"
     for i; do echo "  $i"; done
@@ -42,13 +36,25 @@ dl_111module()
         basename="${name}-$(go version | sed -nr 's/^.* (go[0-9\.]+) .*$/\1/p')-${tag_date}"
     fi
 
-    unset GOROOT
     export GOPATH="/tmp/cache/gopath"
-    export GO111MODULE="${mode}"
+    go env -w GO111MODULE=on
 
     # get the modules twice (everything goes under $GOPATH)
-    env GOARCH=arm64 go get $*
-    env GOARCH=amd64 go get $*
+    case ${mode} in
+        bin)
+            # all modules in one command
+            env GOARCH=arm64 go get $*
+            env GOARCH=amd64 go get $*
+            ;;
+        on)
+            # all modules in one command with dependencies for building tests
+            env GOARCH=arm64 go get -t $*
+            env GOARCH=amd64 go get -t $*
+            ;;
+        *)
+            exit 2
+            ;;
+    esac
 
     # permissions for all
     chmod -R a+rX "${GOPATH}"
@@ -64,11 +70,7 @@ dl_111module()
 
     # Retrieve the list of modules/version
     local mods
-    if [[ ${mode} != on ]]; then
-        mods=($*)
-    else
-        mods=($(cd ${GOPATH}/pkg/mod/cache/download && find . -name '*.zip' | cut -d/ -f2- | sed -r 's,/@v/(.*)\.zip$,@\1,' | sed -e 's/!\([a-z]\)/\u\1/' | sort ))
-    fi
+    mods=($(cd ${GOPATH}/pkg/mod/cache/download && find . -name '*.zip' | cut -d/ -f2- | sed -r 's,/@v/(.*)\.zip$,@\1,' | sed -e 's/!\([a-z]\)/\u\1/' | sort ))
     echo "Module list: ${mods[@]}"
 
     # save the module list info a text file
@@ -82,7 +84,7 @@ dl_111module()
     chmod 444 "${GOPATH}/gomods.txt.${tag_date}"
 
     echo "Making archive"
-    if [[ ${archive_mode} == bin ]]; then
+    if [[ ${mode} == bin ]]; then
         tar -C "${GOPATH}" -c${compression}f /tmp/go-modules.tar bin
     else
         tar -C "${GOPATH}" -c${compression}f /tmp/go-modules.tar $(ls ${GOPATH})
@@ -144,7 +146,7 @@ else
             --no-same-owner \\
             --transform="s,bin/linux_\${arch},bin," \\
             --exclude="bin/linux_\${exclude}*"
-        if [ ${archive_mode} = mods ]; then
+        if [ ${mode} != bin ]; then
             cd \$(go env GOPATH)
             cat gomods.txt.* | sort | grep -v "^# [dg]" > gomods.txt
             chmod 444 gomods.txt
@@ -175,25 +177,21 @@ get_latest_release()
     local repo="$1"
     local asset="$2"
     local url
-
     url=$(curl -s "https://api.github.com/repos/${repo}/releases/latest" |
-          jq -r '.assets | map(select(.name | contains("'${asset}'")).browser_download_url)[]')
+          jq -r '.assets | map(select(.name | match("'${asset}'")).browser_download_url)[]' | head -n1)
 
     echo -e "tool: \033[1;36m$(basename ${url})\033[0m"
     wget -nv -nc -P "${DESTDIR}/go" "${url}"
 }
 
-tools()
+dl_assets()
 {
     echo "Downloading tools"
-
-    # # https://github.com/golangci/golangci-lint/releases
-    get_latest_release golangci/golangci-lint -linux-amd64.tar.gz
-    get_latest_release golangci/golangci-lint -linux-arm64.tar.gz
-
-    # https://github.com/gotestyourself/gotestsum
-    get_latest_release gotestyourself/gotestsum _linux_amd64.tar.gz
-    get_latest_release gotestyourself/gotestsum _linux_arm64.tar.gz
+    for i; do
+        echo "look for assets of $i"
+        get_latest_release $i linux.amd64.tar.gz
+        get_latest_release $i linux.arm64.tar.gz
+    done
 }
 
 filter_all()
@@ -210,7 +208,7 @@ filter_gopls()
             m=$(echo "$line" | cut -d\' -f2)
         fi
         if [[ $line =~ "replacedByGopls: true" ]]; then echo >&2 "  skip $m (replaced by gopls)"; m=; fi
-#        if [[ $line =~ "isImportant: false" ]] && [[ $m ]]; then echo >&2 "  skip $m (non important)"; m=; fi
+        # if [[ $line =~ "isImportant: false" ]] && [[ $m ]]; then echo >&2 "  skip $m (non important)"; m=; fi
     done
     if [[ $m ]]; then echo "$m"; fi
 }
@@ -227,52 +225,97 @@ adapt_version()
 
 parse_go_config()
 {
-    awk '{ if ($1 ~ /^#/) next; if ($1 ~ /^\[/) section=$1; else if ($1 !~ /^$/) if (section=="[go]") print $1 }'
+    local prefix="$1"
+    awk '
+{
+    if ($1 ~ /^#/ || $1 ~ /^$/) next;
+    if ($1 ~ /^\[/)
+        section=$1;
+    else if (section == "['${prefix}']" || section ~ /\['${prefix}':.*\]/) {
+        if ($2 ~ /^v[0-9].*/)
+            print $1 "@" $2
+        else
+            print $1
+    }
+}'
 }
 
-mkdir -p "${DESTDIR}/go"
+semver_lte()
+{
+    printf '%s\n%s' "$1" "$2" | sort -C -V
+}
 
-for i; do
-    case "$i" in
-        -j|--bzip2) compression=j ; shift ;;
-        -z|--gzip) compression=z ; shift ;;
-        --no) compression= ; shift ;;
-        test)
-            rm -f "${DESTDIR}"/go/dl/go/test[1-9].*
+# get tool list from https://github.com/golang/vscode-go
+vscode_gotools()
+{
+    local tag=$(curl -sL https://api.github.com/repos/golang/vscode-go/releases/latest | jq -r ".tag_name")
+    if [[ ! ${tag} ]]; then
+        exit 2
+    fi
 
-            dl_111module test1 bin golang.org/x/example/hello
-            dl_111module test2 on rsc.io/quote@v1.5.2
-            dl_111module test3 on golang.org/x/text@v0.3.3 golang.org/x/example@v0.0.0-20210407023211-09c3a5e06b5d
-            # nota: golang.org/x/text@v0.3.3 is mysteriously required when golang.org/x/example and rsc.io are both required
-            ;;
-        mods)
-            # download in the new Go modules mode
-            packages=($(cat /config.txt | parse_go_config))
-            dl_111module mods on ${packages[*]}
-            ;;
+    # tools information has been moved in v0.26.0
+    if semver_lte "${tag}" "v0.26.0"; then
+        curl -sL "https://raw.githubusercontent.com/golang/vscode-go/${tag}/src/goTools.ts"
+    else
+        curl -sL "https://raw.githubusercontent.com/golang/vscode-go/${tag}/src/goToolsInformation.ts"
+    fi
+}
 
-        vscode*)
-            if [[ $i =~ -full ]]; then
-                filter=filter_all
-            else
-                filter=filter_gopls
-            fi
-            if [[ $i =~ -bin ]]; then
-                mode=bin
-            else
-                mode=on
-            fi
+main()
+{
+    mkdir -p "${DESTDIR}/go"
 
-            # fetch the list of tools into the the source code of the extension
-            vscode=($(curl -sL https://raw.githubusercontent.com/golang/vscode-go/master/src/goTools.ts | \
-                      $filter | sort -u | adapt_version))
+    for i; do
 
-            dl_111module $i $mode ${vscode[*]}
-            ;;
+        case "$i" in
+            -j|--bzip2) compression=j ; shift ;;
+            -z|--gzip) compression=z ; shift ;;
+            --no) compression= ; shift ;;
 
-        tools)
-            tools
-            ;;
-        *) echo "Unknown operation: $1" ;;
-    esac
-done
+            test)
+                rm -f "${DESTDIR}"/go/dl/go/test[1-9].*
+
+                dl_111module test1 bin golang.org/x/example/hello
+                dl_111module test2 on rsc.io/quote@v1.5.2
+                dl_111module test3 on golang.org/x/text@v0.3.3 golang.org/x/example@v0.0.0-20210407023211-09c3a5e06b5d
+                # nota: golang.org/x/text@v0.3.3 is mysteriously required when golang.org/x/example and rsc.io are both required
+                ;;
+
+            mods)
+                # download Go module
+                local list=($(cat /config.txt | parse_go_config go))
+                dl_111module $i on ${list[*]}
+                ;;
+
+            vscode*)
+                local filter
+                local mode
+                local vscode
+
+                if [[ $i =~ -full ]]; then
+                    filter=filter_all
+                else
+                    filter=filter_gopls
+                fi
+                if [[ $i =~ -bin ]]; then
+                    mode=bin
+                else
+                    mode=on
+                fi
+
+                # fetch the list of tools into the the source code of the extension
+                vscode=($(vscode_gotools | $filter | sort -u | adapt_version))
+                dl_111module $i ${mode} ${vscode[*]}
+                ;;
+
+            tools)
+                local list=($(cat /config.txt | parse_go_config gotools))
+                dl_assets ${list[*]}
+                ;;
+
+            *) echo "Unknown operation: $1" ;;
+        esac
+    done
+}
+
+main "$@"
