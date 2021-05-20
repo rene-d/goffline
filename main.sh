@@ -278,14 +278,14 @@ vscode_gotools()
 usage()
 {
     echo "Usage: $0 <command> | [options]"
-    exit 1
+    exit 0
 }
 
 main()
 {
     mkdir -p "${DESTDIR}"/{go,logs}
 
-    case "${1:=}" in
+    case "${1:-}" in
         test)
             rm -f "${DESTDIR}"/go/dl/go/test[1-9].*
 
@@ -350,10 +350,14 @@ main()
         esac
     done
 
+    if [[ $# != 0 ]]; then
+        echo >&2 "Unknown option: $*"
+        exit 1
+    fi
+
     # download Go module
     local list=($(cat /config.txt | parse_go_config go))
     dl_111module "${name}" on ${list[*]} | tee "${DESTDIR}/logs/${name}.log"
-
 }
 
 main "$@"

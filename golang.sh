@@ -101,14 +101,12 @@ EOF
 else
     # download Go modules
     config=
-    while [[ $# != 0 ]]; do
-        if [[ "$1" == "-f" ]]; then
-            config="-v $(realpath "$2"):/config.txt:ro"
-            shift 2
-            break
-        fi
-    done
+    if [[ $# != 0 ]] && [[ "$1" == "-f" ]]; then
+        config="-v $(realpath "$2"):/config.txt:ro"
+        shift 2
+        break
+    fi
 
-    docker run --init -e TINI_KILL_PROCESS_GROUP=1 --rm -i -v "$PWD/dl:/dl" \
+    exec docker run --init -e TINI_KILL_PROCESS_GROUP=1 --rm -i -v "$PWD/dl:/dl" \
         -e "GOFFLINE_VERSION=$(git describe --always --tags)" ${config} go-pkgs-dl /main.sh $*
 fi
