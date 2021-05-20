@@ -285,6 +285,26 @@ main()
 {
     mkdir -p "${DESTDIR}"/{go,logs}
 
+    local name="mods"
+
+    # parse options
+    while [[ $# != 0 ]]; do
+        case "$1" in
+            -h|--help) usage ;;
+            -j|--bzip2) compression=j; shift 1 ;;
+            -z|--gzip) compression=z; shift 1 ;;
+            --no) compression=; shift 1 ;;
+            -m|--mode) mode="$2"; shift 2 ;;
+            -s|--suffix) suffix="$2"; shift 2 ;;
+            -t|--test) go_get_opt="${go_get_opt} -t"; shift ;;
+            -1|--1by1) go_get_1by1=1; shift ;;
+            -n|--name) name="$2"; shift 2 ;;
+            --sha) compute_sha=1; shift ;;
+            --) shift; break ;;
+            * ) break ;;
+        esac
+    done
+
     case "${1:-}" in
         test)
             rm -f "${DESTDIR}"/go/dl/go/test[1-9].*
@@ -327,28 +347,7 @@ main()
 
             return
             ;;
-
     esac
-
-    local name="mods"
-
-    # parse options
-    while [[ $# != 0 ]]; do
-        case "$1" in
-            -h|--help) usage ;;
-            -j|--bzip2) compression=j; shift 1 ;;
-            -z|--gzip) compression=z; shift 1 ;;
-            --no) compression=; shift 1 ;;
-            -m|--mode) mode="$2"; shift 2 ;;
-            -s|--suffix) suffix="$2"; shift 2 ;;
-            -t|--test) go_get_opt="${go_get_opt} -t"; shift ;;
-            -1|--1by1) go_get_1by1=1; shift ;;
-            -n|--name) name="$2"; shift 2 ;;
-            --sha) compute_sha=1; shift ;;
-            --) shift; break ;;
-            * ) break ;;
-        esac
-    done
 
     if [[ $# != 0 ]]; then
         echo >&2 "Unknown option: $*"
