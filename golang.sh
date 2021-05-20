@@ -3,7 +3,7 @@
 
 set -e
 
-GO_VERSION="${GO_VERSION:-1.14.15}"
+GO_VERSION="${GO_VERSION:-1.16.4}"
 
 DOCKER_SCAN_SUGGEST=false docker build --build-arg GO_VERSION="${GO_VERSION}" -t go-pkgs-dl .
 
@@ -100,15 +100,15 @@ EOF
 
 else
     # download Go modules
-    list=
-    if [[ -f $1 ]]; then
-        list="-v $(realpath $1):/config.txt:ro"
-        shift
-    fi
-    if [[ $# == 0 ]]; then
-        set -- mods
-    fi
+    config=
+    while [[ $# != 0 ]]; do
+        if [[ "$1" == "-f" ]]; then
+            config="-v $(realpath "$2"):/config.txt:ro"
+            shift 2
+            break
+        fi
+    done
 
     docker run --init -e TINI_KILL_PROCESS_GROUP=1 --rm -i -v "$PWD/dl:/dl" \
-        -e "GOFFLINE_VERSION=$(git describe --always --tags)" ${list} go-pkgs-dl /main.sh $*
+        -e "GOFFLINE_VERSION=$(git describe --always --tags)" ${config} go-pkgs-dl /main.sh $*
 fi

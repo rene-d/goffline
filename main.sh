@@ -10,13 +10,15 @@ set -ue
 
 GOFFLINE_VERSION=${GOFFLINE_VERSION:=dev}
 
-compression=J
-
 now="$(date +%s)"
-tag_date="$(date --date=@"${now}" +%Y%m%d%H%M%S)"
-tag_date_iso8601="$(date --date=@"${now}" --iso-8601=seconds)"
+now_iso8601="$(date --date=@"${now}" --iso-8601=seconds)"
 test_count=0
 
+compression=J
+go_get_opt=
+go_get_1by1=
+suffix="$(date --date=@"${now}" +%Y%m%d%H%M%S)"
+compute_sha=
 
 dl_111module()
 {
@@ -24,33 +26,44 @@ dl_111module()
     local mode="$2"  # possible values: on bin
     shift 2
 
-    echo -e "Processing \033[1;33m${name}\033[0m set in mode \033[1;33m${mode}\033[0m with:"
+    echo -e "Processing \033[1;33m${name}\033[0m in mode \033[1;33m${mode}\033[0m with:"
     for i; do echo "  $i"; done
 
     # the basename contains Go version and date, except for the unit tests
     if [[ ${name} =~ ^test[1-9]$ ]]; then
         basename="${name}"
         test_count=$((test_count + 1))
-        local tag_date="${tag_date}.${test_count}"
+        local suffix="${suffix}.${test_count}"
     else
-        basename="${name}-$(go version | sed -nr 's/^.* (go[0-9\.]+) .*$/\1/p')-${tag_date}"
+        basename="${name}-$(go version | sed -nr 's/^.* (go[0-9\.]+) .*$/\1/p')-${suffix}"
     fi
 
     export GOPATH="/tmp/cache/gopath"
     go env -w GO111MODULE=on
 
     # get the modules twice (everything goes under $GOPATH)
+    echo "running go get with opt=${go_get_opt} 1by1=${go_get_1by1}"
     case ${mode} in
         bin)
             # all modules in one command
             env GOARCH=arm64 go get $*
             env GOARCH=amd64 go get $*
             ;;
+
         on)
-            # all modules in one command with dependencies for building tests
-            env GOARCH=arm64 go get -t $*
-            env GOARCH=amd64 go get -t $*
+            if [[ ${go_get_1by1} ]]; then
+                for i; do
+                    echo
+                    echo "~~~~~~~~~~ $i ~~~~~~~~~~"
+                    env GOARCH=arm64 go get ${go_get_opt} $i
+                    env GOARCH=amd64 go get ${go_get_opt} $i
+                done
+            else
+                env GOARCH=arm64 go get ${go_get_opt} $*
+                env GOARCH=amd64 go get ${go_get_opt} $*
+            fi
             ;;
+
         *)
             exit 2
             ;;
@@ -74,16 +87,16 @@ dl_111module()
     echo "Module list: ${mods[@]}"
 
     # save the module list info a text file
-    echo "# tag: ${tag_date}" > "${GOPATH}/gomods.txt.${tag_date}"
-    echo "# date: ${tag_date_iso8601}" >> "${GOPATH}/gomods.txt.${tag_date}"
-    echo "# goffline: ${GOFFLINE_VERSION}" >> "${GOPATH}/gomods.txt.${tag_date}"
-    echo >> "${GOPATH}/gomods.txt.${tag_date}"
+    echo "# tag: ${suffix}" > "${GOPATH}/gomods.txt.${suffix}"
+    echo "# date: ${now_iso8601}" >> "${GOPATH}/gomods.txt.${suffix}"
+    echo "# goffline: ${GOFFLINE_VERSION}" >> "${GOPATH}/gomods.txt.${suffix}"
+    echo >> "${GOPATH}/gomods.txt.${suffix}"
     for i in ${mods[*]}; do
-        echo "$i" | sed 's/@/ /' >> "${GOPATH}/gomods.txt.${tag_date}"
+        echo "$i" | sed 's/@/ /' >> "${GOPATH}/gomods.txt.${suffix}"
     done
-    chmod 444 "${GOPATH}/gomods.txt.${tag_date}"
+    chmod 444 "${GOPATH}/gomods.txt.${suffix}"
 
-    echo "Making archive"
+    echo "Making archive compression=${compression}"
     if [[ ${mode} == bin ]]; then
         tar -C "${GOPATH}" -c${compression}f /tmp/go-modules.tar bin
     else
@@ -103,8 +116,8 @@ if [ "\$1" = "-m" ]; then
     exit
 elif [ "\$1" = "-i" ]; then
     echo "version: $(go version)"
-    echo "tag: ${tag_date}"
-    echo "date: ${tag_date_iso8601}"
+    echo "tag: ${suffix}"
+    echo "date: ${now_iso8601}"
     echo "goffline: ${GOFFLINE_VERSION}"
     exit
 elif [ "\$1" = "-t" ]; then
@@ -161,9 +174,11 @@ EOF
     echo '#EOF#' >> "${DESTDIR}/go/${filename}"
     chmod a+x "${DESTDIR}/go/${filename}"
 
-    # add checksum file
-    cd "${DESTDIR}/go"
-    sha256sum -b "${filename}" > "${filename}.sha256"
+    if [[ ${compute_sha} ]]; then
+        # add checksum file
+        cd "${DESTDIR}/go"
+        sha256sum -b "${filename}" > "${filename}.sha256"
+    fi
 
     rm -rf "${GOPATH}"
 
@@ -261,61 +276,85 @@ vscode_gotools()
     fi
 }
 
+usage()
+{
+    echo "Usage: $0 <command> | [options]"
+    exit 1
+}
+
 main()
 {
-    mkdir -p "${DESTDIR}/go"
+    mkdir -p "${DESTDIR}"/{go,logs}
 
-    for i; do
+    case "${1:=}" in
+        test)
+            rm -f "${DESTDIR}"/go/dl/go/test[1-9].*
 
-        case "$i" in
-            -j|--bzip2) compression=j ; shift ;;
-            -z|--gzip) compression=z ; shift ;;
-            --no) compression= ; shift ;;
+            compression=J dl_111module test1 bin golang.org/x/example/hello
+            compression=z dl_111module test2 on rsc.io/quote@v1.5.2
+            compression=j dl_111module test3 on golang.org/x/text@v0.3.3 golang.org/x/example@v0.0.0-20210407023211-09c3a5e06b5d
+            # nota: golang.org/x/text@v0.3.3 is mysteriously required when golang.org/x/example and rsc.io are both required
 
-            test)
-                rm -f "${DESTDIR}"/go/dl/go/test[1-9].*
+            return
+            ;;
 
-                compression=J dl_111module test1 bin golang.org/x/example/hello
-                compression=z dl_111module test2 on rsc.io/quote@v1.5.2
-                compression=j dl_111module test3 on golang.org/x/text@v0.3.3 golang.org/x/example@v0.0.0-20210407023211-09c3a5e06b5d
-                # nota: golang.org/x/text@v0.3.3 is mysteriously required when golang.org/x/example and rsc.io are both required
-                ;;
+        assets)
+            local list=($(cat /config.txt | parse_go_config gotools))
+            dl_assets ${list[*]}
 
-            mods)
-                # download Go module
-                local list=($(cat /config.txt | parse_go_config go))
-                dl_111module $i on ${list[*]}
-                ;;
+            return
+            ;;
 
-            vscode*)
-                local filter
-                local mode
-                local vscode
+        vscode*)
+            local filter
+            local mode
+            local list
 
-                if [[ $i =~ -full ]]; then
-                    filter=filter_all
-                else
-                    filter=filter_gopls
-                fi
-                if [[ $i =~ -bin ]]; then
-                    mode=bin
-                else
-                    mode=on
-                fi
+            if [[ "$1" =~ -full ]]; then
+                filter=filter_all
+            else
+                filter=filter_gopls
+            fi
+            # if [[ $i =~ -bin ]]; then
+            #     mode=bin
+            # else
+            #     mode=on
+            # fi
+            mode=bin
 
-                # fetch the list of tools into the the source code of the extension
-                vscode=($(vscode_gotools | $filter | sort -u | adapt_version))
-                dl_111module $i ${mode} ${vscode[*]}
-                ;;
+            # fetch the list of tools into the the source code of the extension
+            list=($(vscode_gotools | $filter | sort -u | adapt_version))
+            dl_111module "$1" ${mode} ${list[*]}
 
-            tools)
-                local list=($(cat /config.txt | parse_go_config gotools))
-                dl_assets ${list[*]}
-                ;;
+            return
+            ;;
 
-            *) echo "Unknown operation: $1" ;;
+    esac
+
+    local name="mods"
+
+    # parse options
+    while [[ $# != 0 ]]; do
+        case "$1" in
+            -h|--help) usage ;;
+            -j|--bzip2) compression=j; shift 1 ;;
+            -z|--gzip) compression=z; shift 1 ;;
+            --no) compression=; shift 1 ;;
+            -m|--mode) mode="$2"; shift 2 ;;
+            -s|--suffix) suffix="$2"; shift 2 ;;
+            -t|--test) go_get_opt="${go_get_opt} -t"; shift ;;
+            -1|--1by1) go_get_1by1=1; shift ;;
+            -n|--name) name="$2"; shift 2 ;;
+            --sha) compute_sha=1; shift ;;
+            --) shift; break ;;
+            * ) break ;;
         esac
     done
+
+    # download Go module
+    local list=($(cat /config.txt | parse_go_config go))
+    dl_111module "${name}" on ${list[*]} | tee "${DESTDIR}/logs/${name}.log"
+
 }
 
 main "$@"
