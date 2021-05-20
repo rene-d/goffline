@@ -7,6 +7,15 @@ GO_VERSION="${GO_VERSION:-1.16.4}"
 
 DOCKER_SCAN_SUGGEST=false docker build --build-arg GO_VERSION="${GO_VERSION}" -t go-pkgs-dl .
 
+do_chown()
+{
+    # fix docker rootfull bind mount rights
+    if find "$PWD/dl" -user root -print -quit | grep -q "." ; then
+        echo "Change owner to $(id -un)"
+        exec docker run --rm -i -v "$PWD/dl:/dl" go-pkgs-dl chown -R "$(id -u):$(id -g)" /dl
+    fi
+}
+
 mkdir -p "$PWD/dl"
 
 if [[ "$1" == "build_only" ]]; then
@@ -27,10 +36,7 @@ elif [[ "$1" == "rshell" ]]; then
 elif [[ "$1" == "chown" ]]; then
     # chown files if Docker is ran rootfull
 
-    if ! find "$PWD/dl" -user root -print -quit | grep -q "." ; then
-        echo "Change owner to $(id -un)"
-        exec docker run --rm -i -v "$PWD/dl:/dl" go-pkgs-dl chown -R "$(id -u):$(id -g)" /dl
-    fi
+    do_chown
 
 elif [[ "$1" == "test" ]]; then
     # unit tests
@@ -98,6 +104,8 @@ EOF
             go mod tidy ;
             go build ; ls -l hello ; ./hello"
 
+	do_chown
+
 else
     # download Go modules
     config=
@@ -107,6 +115,8 @@ else
         break
     fi
 
-    exec docker run --init -e TINI_KILL_PROCESS_GROUP=1 --rm -i -v "$PWD/dl:/dl" \
+    docker run --init -e TINI_KILL_PROCESS_GROUP=1 --rm -i -v "$PWD/dl:/dl" \
         -e "GOFFLINE_VERSION=$(git describe --always --tags)" ${config} go-pkgs-dl /main.sh $*
+
+    do_chown
 fi
