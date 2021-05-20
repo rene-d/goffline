@@ -8,21 +8,20 @@ Binaries for both architectures `amd64` and `arm64` are built during the downloa
 
 ## Requirements
 
-Linux or macOS (Windows not tested) with Docker and Internet access.
+Linux or macOS (Windows not tested) with Docker, bash and Internet access.
 
 ## Usage
 
 Make a self-extracting archive of Go modules:
 
 ```bash
-./golang.sh [module list] mods
+./golang.sh [-f module_list] [options]
 ```
 
-The result will be three files:
+The result will be two files:
 
 - `mods-[Go version]-[timestamp].sh` : the self-extracting archive (with a few command-line options)
-- `mods-[Go version]-[timestamp].sh.sha256` : archive checksum
-- `mods-[Go version]-[timestamp].list` : download info and module list
+- `mods-[Go version]-[timestamp].sh.sha256` : optional archive checksum
 
 Make a self-extracting archive of Go modules used by the [Go extension](https://marketplace.visualstudio.com/items?itemName=golang.go) for Visual Studio Code (only the compiled binaries, seems to be sufficient):
 

@@ -4,7 +4,7 @@
 set -e
 
 slug=$1
-engine=${2:-1.55.2}
+engine=${2:-1.56.2}
 
 if [[ -z ${DESTDIR:+x} ]]; then
     dl_dir=.
