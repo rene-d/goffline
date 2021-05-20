@@ -27,7 +27,6 @@ dl_111module()
     shift 2
 
     echo -e "Processing \033[1;33m${name}\033[0m in mode \033[1;33m${mode}\033[0m with:"
-    for i; do echo "  $i"; done
 
     # the basename contains Go version and date, except for the unit tests
     if [[ ${name} =~ ^test[1-9]$ ]]; then
@@ -45,7 +44,7 @@ dl_111module()
     echo "running go get with opt=${go_get_opt} 1by1=${go_get_1by1}"
     case ${mode} in
         bin)
-            # all modules in one command
+            for i; do echo "  $i"; done
             env GOARCH=arm64 go get $*
             env GOARCH=amd64 go get $*
             ;;
@@ -59,6 +58,7 @@ dl_111module()
                     env GOARCH=amd64 go get ${go_get_opt} $i
                 done
             else
+                for i; do echo "  $i"; done
                 env GOARCH=arm64 go get ${go_get_opt} $*
                 env GOARCH=amd64 go get ${go_get_opt} $*
             fi
@@ -84,7 +84,6 @@ dl_111module()
     # Retrieve the list of modules/version
     local mods
     mods=($(cd ${GOPATH}/pkg/mod/cache/download && find . -name '*.zip' | cut -d/ -f2- | sed -r 's,/@v/(.*)\.zip$,@\1,' | sed -e 's/!\([a-z]\)/\u\1/' | sort ))
-    echo "Module list: ${mods[@]}"
 
     # save the module list info a text file
     echo "# tag: ${suffix}" > "${GOPATH}/gomods.txt.${suffix}"
