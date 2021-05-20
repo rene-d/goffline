@@ -1,4 +1,4 @@
-ARG GO_VERSION=1.14.15
+ARG GO_VERSION=1.16.4
 
 FROM golang:${GO_VERSION}-buster
 
