@@ -112,7 +112,6 @@ else
     if [[ $# != 0 ]] && [[ "$1" == "-f" ]]; then
         config="-v $(realpath "$2"):/config.txt:ro"
         shift 2
-        break
     fi
 
     docker run --init -e TINI_KILL_PROCESS_GROUP=1 --rm -i -v "$PWD/dl:/dl" \
