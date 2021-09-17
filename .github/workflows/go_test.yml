@@ -36,4 +36,4 @@ jobs:
         run: GO_VERSION=1.15.12 ./golang.sh test
 
       - name: Go modules test with Go 1.16
-        run: GO_VERSION=1.16.4 ./golang.sh test
+        run: GO_VERSION=1.16.8 ./golang.sh test

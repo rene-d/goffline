@@ -3,7 +3,7 @@
 
 set -e
 
-GO_VERSION="${GO_VERSION:-1.16.4}"
+GO_VERSION="${GO_VERSION:-1.16.8}"
 
 DOCKER_SCAN_SUGGEST=false docker build --build-arg GO_VERSION="${GO_VERSION}" -t go-pkgs-dl .
 
