@@ -24,12 +24,12 @@ if [[ "$1" == "build_only" ]]; then
     exit
 
 elif [[ "$1" == "shell" ]]; then
-    # launch a shell into the conatiner
+    # launch a shell into the container
 
     exec docker run --rm -ti -v "$PWD:/wd" -w /wd go-pkgs-dl
 
 elif [[ "$1" == "rshell" ]]; then
-    # launch a shell into the conatiner
+    # launch a shell into the container without network access
 
     exec docker run --network none --rm -ti -v "$PWD:/wd" -w /wd go-pkgs-dl
 

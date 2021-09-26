@@ -45,8 +45,13 @@ dl_111module()
     case ${mode} in
         bin)
             for i; do echo "  $i"; done
-            env GOARCH=arm64 go get $*
-            env GOARCH=amd64 go get $*
+
+            for i; do
+                echo
+                echo "~~~~~~~~~~ $i ~~~~~~~~~~"
+                env GOARCH=arm64 go get $i
+                env GOARCH=amd64 go get $i
+            done
             ;;
 
         on)
