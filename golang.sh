@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Use a Docker container to call the Go modules downloader
 
-set -e
+set -Eeuo pipefail
 
 GO_VERSION="${GO_VERSION:-1.16.8}"
 
@@ -18,27 +18,27 @@ do_chown()
 
 mkdir -p "$PWD/dl"
 
-if [[ "$1" == "build_only" ]]; then
+if [[ "${1:-}" == "build_only" ]]; then
     # just build the image
 
     exit
 
-elif [[ "$1" == "shell" ]]; then
+elif [[ "${1:-}" == "shell" ]]; then
     # launch a shell into the container
 
     exec docker run --rm -ti -v "$PWD:/wd" -w /wd go-pkgs-dl
 
-elif [[ "$1" == "rshell" ]]; then
+elif [[ "${1:-}" == "rshell" ]]; then
     # launch a shell into the container without network access
 
     exec docker run --network none --rm -ti -v "$PWD:/wd" -w /wd go-pkgs-dl
 
-elif [[ "$1" == "chown" ]]; then
+elif [[ "${1:-}" == "chown" ]]; then
     # chown files if Docker is ran rootfull
 
     do_chown
 
-elif [[ "$1" == "test" ]]; then
+elif [[ "${1:-}" == "test" ]]; then
     # unit tests
 
     # download only modules for the tests
@@ -109,7 +109,7 @@ EOF
 else
     # download Go modules
     config=
-    if [[ $# != 0 ]] && [[ "$1" == "-f" ]]; then
+    if [[ $# -ge 2 ]] && [[ "$1" == "-f" ]]; then
         config="-v $(realpath "$2"):/config.txt:ro"
         shift 2
     fi

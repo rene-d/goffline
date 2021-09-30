@@ -6,7 +6,7 @@ if [[ ! -f /.dockerenv ]] || [[ ! ${GOLANG_VERSION} ]]; then
     exit 2
 fi
 
-set -ue
+set -Eeuo pipefail
 
 GOFFLINE_VERSION=${GOFFLINE_VERSION:=dev}
 
@@ -288,7 +288,7 @@ usage()
 
 main()
 {
-    mkdir -p "${DESTDIR}"/{go,logs}
+    mkdir -p "${DESTDIR}"/go
 
     local name="mods"
 
@@ -361,7 +361,7 @@ main()
 
     # download Go module
     local list=($(cat /config.txt | parse_go_config go))
-    dl_111module "${name}" on ${list[*]} | tee "${DESTDIR}/logs/${name}.log"
+    dl_111module "${name}" on ${list[*]}
 }
 
 main "$@"

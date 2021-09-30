@@ -1,14 +1,13 @@
 #!/usr/bin/env bash
 # Download Visual Studio Code client and server, and a list of extensions
 
-set -e
+set -Eeuo pipefail
 
 DESTDIR="${DESTDIR:-.}"
 
 if [[ ! -f /.dockerenv ]]; then
-
     list=
-    if [[ -f $1 ]]; then
+    if [[ -f "${1:-}" ]]; then
         list="-v $(realpath "$1"):/config.txt:ro"
         shift
     fi
@@ -42,16 +41,18 @@ echo -e "Found commit: \033[1;32m${commit}\033[0m"
 mkdir -p "${DESTDIR}/vscode-${version}"
 
 # save the commit id
-echo "channel=${channel}" > "${DESTDIR}/vscode-${version}/version"
-echo "version=${version}" >> "${DESTDIR}/vscode-${version}/version"
+echo "${version}" > "${DESTDIR}/vscode-version"
+echo "version=${version}" > "${DESTDIR}/vscode-${version}/version"
 echo "commit=${commit}" >> "${DESTDIR}/vscode-${version}/version"
+echo "channel=${channel}" >> "${DESTDIR}/vscode-${version}/version"
 
-# download windows, linux and vscode-server x86_64 et aarch64
+# download windows, linux and vscode-server for x86_64 and aarch64 architectures
+set +e
 wget -nv -nc -P "${DESTDIR}/vscode-${version}" "${link}"
-wget -nv -nc -P "${DESTDIR}/vscode-${version}" $(get_link "https://code.visualstudio.com/sha/download?build=${channel}&os=linux-x64")
+wget -nv -nc -O "${DESTDIR}/vscode-${version}/code-linux-x64-${version}.tar.gz" $(get_link "https://code.visualstudio.com/sha/download?build=${channel}&os=linux-x64")
 wget -nv -nc -P "${DESTDIR}/vscode-${version}" $(get_link "https://update.code.visualstudio.com/commit:${commit}/server-linux-x64/${channel}")
 wget -nv -nc -P "${DESTDIR}/vscode-${version}" $(get_link "https://update.code.visualstudio.com/commit:${commit}/server-linux-arm64/${channel}")
-
+set -e
 
 filter_vscode_config()
 {

@@ -54,9 +54,7 @@ def make_host(download_dir: Path, version: str, host_extensions: List):
     with ZipFile(zip_file, "w") as zip_host:
         for vsix_name in host_extensions:
 
-            vsix_file = find_vsix(
-                download_dir / f"vscode-extensions-{version}", vsix_name
-            )
+            vsix_file = find_vsix(download_dir / f"vscode-extensions-{version}", vsix_name)
 
             # directory name contains the version and is lowercase
             vsix_dir = vsix_file.with_suffix("").name.lower()
@@ -69,10 +67,7 @@ def make_host(download_dir: Path, version: str, host_extensions: List):
                         f.filename = f".vscode/extensions/{vsix_dir}/.vsixmanifest"
                         zip_host.writestr(f, vsix_zip.read(f))
                     elif f.filename.startswith("extension/"):
-                        f.filename = (
-                            f".vscode/extensions/{vsix_dir}"
-                            + f.filename[len("extension") :]
-                        )
+                        f.filename = f".vscode/extensions/{vsix_dir}" + f.filename[len("extension") :]
                         zip_host.writestr(f, vsix_zip.read(f))
                     else:
                         pass
@@ -91,9 +86,7 @@ def make_remote(
 ):
     """ Make the archive for remote extensions that should be extracted into $HOME. """
 
-    tar_remote = tarfile.open(
-        download_dir / f"vscode-server+extensions-{arch}-{version}.tar.xz", mode="w:xz"
-    )
+    tar_remote = tarfile.open(download_dir / f"vscode-server+extensions-{arch}-{version}.tar.xz", mode="w:xz")
 
     print(f"Making \033[1;33mremote\033[0m extensions archive")
 
@@ -105,9 +98,7 @@ def make_remote(
     print(f"adding {server_archive}")
 
     basedir = f".vscode-server/bin/{commit_id}"
-    server = tarfile.open(
-        download_dir / f"vscode-{version}/{server_archive}", mode="r:gz"
-    )
+    server = tarfile.open(download_dir / f"vscode-{version}/{server_archive}", mode="r:gz")
     for i in server.getmembers():
         p = i.name.find("/")
         if p == -1:
@@ -119,9 +110,7 @@ def make_remote(
 
     for vsix_name in remote_extension:
 
-        vsix_file = find_vsix(
-            download_dir / f"vscode-extensions-{version}", vsix_name, arch
-        )
+        vsix_file = find_vsix(download_dir / f"vscode-extensions-{version}", vsix_name, arch)
 
         # directory name contains the version and is lowercase
         vsix_dir = vsix_file.with_suffix("").name.lower()
@@ -134,10 +123,7 @@ def make_remote(
                 if f.filename == "extension.vsixmanifest":
                     ti.name = f".vscode-server/extensions/{vsix_dir}/.vsixmanifest"
                 elif f.filename.startswith("extension/"):
-                    ti.name = (
-                        f".vscode-server/extensions/{vsix_dir}"
-                        + f.filename[len("extension") :]
-                    )
+                    ti.name = f".vscode-server/extensions/{vsix_dir}" + f.filename[len("extension") :]
                 else:
                     continue
                 ti.mode = f.external_attr >> 16
@@ -183,32 +169,31 @@ def load_conf(download_dir, conf_file):
 
     print(f"Found version \033[1;32m{version}\033[0m commit \033[1;32m{commit}\033[0m")
 
+    if "vscode:common" in config:
+        common = list(config["vscode:common"].keys())
+    else:
+        common = []
+
     if "vscode:host" in config:
-        make_host(download_dir, version, list(config["vscode:host"].keys()))
+        make_host(download_dir, version, common + list(config["vscode:host"].keys()))
 
     if "vscode:remote" in config:
         make_remote(
             download_dir,
             version,
             commit,
-            list(config["vscode:remote"].keys()),
+            common + list(config["vscode:remote"].keys()),
             "x86_64",
         )
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Make archive for Visual Studio Code offline installation"
-    )
+    parser = argparse.ArgumentParser(description="Make archive for Visual Studio Code offline installation")
     parser.add_argument("-d", "--download-dir", help="download dir", default="dl")
     parser.add_argument("--vscode-version", help="Visual Studio Code version")
     parser.add_argument("--commit-id", help="Visual Studio Code commit id")
-    parser.add_argument(
-        "-H", "--host-extension", help="Host extension", action="append"
-    )
-    parser.add_argument(
-        "-R", "--remote-extension", help="Remote extension", action="append"
-    )
+    parser.add_argument("-H", "--host-extension", help="Host extension", action="append")
+    parser.add_argument("-R", "--remote-extension", help="Remote extension", action="append")
     parser.add_argument("--arch", help="Architecture", default="x86_64")
 
     parser.add_argument("-f", help="configuration file")
