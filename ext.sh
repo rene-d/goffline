@@ -79,8 +79,8 @@ json=$(echo $data | curl -s \
 
 # the extension name
 name=$(echo $json | jq -r '.results[].extensions[] | (.publisher.publisherName + "." + .extensionName)')
-mkdir -p dl/logs
-echo $json | jq . > dl/logs/${name}.json
+# mkdir -p dl/logs
+# echo $json | jq . > dl/logs/${name}.json
 
 # https://stackoverflow.com/questions/4023830
 # not sure it works all the time, some version numbers may be messy
