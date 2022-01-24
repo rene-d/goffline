@@ -20,13 +20,11 @@ go_get_1by1=
 suffix="$(date --date=@"${now}" +%Y%m%d%H%M%S)"
 compute_sha=
 
-dl_111module()
+dl_111module_setup()
 {
     local name="$1"
-    local mode="$2"  # possible values: on bin
-    shift 2
 
-    echo -e "Processing \033[1;33m${name}\033[0m in mode \033[1;33m${mode}\033[0m with:"
+    echo -e "Processing \033[1;33m${name}\033[0m with:"
 
     # the basename contains Go version and date, except for the unit tests
     if [[ ${name} =~ ^test[1-9]$ ]]; then
@@ -38,7 +36,14 @@ dl_111module()
     fi
 
     export GOPATH="/tmp/cache/gopath"
+    mkdir -p "${GOPATH}"
     go env -w GO111MODULE=on
+}
+
+dl_111module_add()
+{
+    local mode="$1"  # possible values: on bin
+    shift
 
     # get the modules twice (everything goes under $GOPATH)
     echo "running go get with opt=${go_get_opt} 1by1=${go_get_1by1}"
@@ -49,20 +54,26 @@ dl_111module()
             for i; do
                 local module=$(echo $i | cut -d= -f1)
                 local bin=$(echo $module | sed -E 's?.*/([^/]+)@.*?\1?')
-                local name=$(echo $i | cut -d= -f2)
+                local name=
+
+                if [[ $module =~ = ]]; then
+                    name=$(echo $i | cut -d= -f2)
+                fi
+
                 echo
                 echo "~~~~~~~~~~ ${module} ${name} ~~~~~~~~~~"
                 rm -rf /build
                 mkdir -p "${GOPATH}"
                 env GOPATH=/build GOARCH=arm64 go install "${module}"
                 env GOPATH=/build GOARCH=amd64 go install "${module}"
-                find /build/bin -name "${bin}" -execdir mv -n {} "${name}" \;
+                if [[ -n ${name} ]]; then
+                    find /build/bin -name "${bin}" -execdir mv -n {} "${name}" \;
+                fi
                 cp -rp /build/bin "${GOPATH}"
             done
-            find /go/bin -ls
             ;;
 
-        on)
+        mod)
             if [[ ${go_get_1by1} ]]; then
                 for i; do
                     echo
@@ -81,6 +92,12 @@ dl_111module()
             exit 2
             ;;
     esac
+}
+
+dl_111module_finish()
+{
+    local name="$1"
+    local mode="$2"  # possible values: mod bin
 
     # permissions for all
     chmod -R a+rX "${GOPATH}"
@@ -108,6 +125,78 @@ dl_111module()
         echo "$i" | sed 's/@/ /' >> "${GOPATH}/gomods.txt.${suffix}"
     done
     chmod 444 "${GOPATH}/gomods.txt.${suffix}"
+
+    # script to get a go.mod requirement
+    cat <<'EOF' > "${GOPATH}/findmod"
+#!/bin/sh
+set -e
+test -n "$1"
+exec awk -v a="$1" '{ if ($1==a) print "require " $0 }' /go/gomods.txt
+EOF
+    chmod 755 "${GOPATH}/findmod"
+
+    cat <<'EOF' > "${GOPATH}/updatemods"
+#!/usr/bin/env python
+
+from __future__ import print_function
+import argparse
+from os.path import exists
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Update the mod list.")
+    parser.add_argument("-w", "--write", action="store_true", help="Write go.mod if updated")
+    parser.add_argument("gomod", help="Path to go.mod", default="go.mod", type=str, nargs="?")
+    args = parser.parse_args()
+
+    if not exists("/go/gomods.txt"):
+        print("/go/gomods.txt not found")
+        return
+
+    if not exists(args.gomod):
+        print("{} not found".format(args.gomod))
+        return
+
+    modules = {}
+    for line in open("/go/gomods.txt"):
+        line = line.strip()
+        if line.startswith("#"):
+            continue
+        p = line.find(" ")
+        if p != -1:
+            name = line[:p]
+            version = line[p + 1 :]
+            modules[name] = version
+
+    gomods = []
+    updated = []
+    for line in open(args.gomod):
+        for name in modules:
+            p = line.find(name)
+            if p != -1:
+                version = modules[name]
+                if version not in line:
+                    line = line[:p] + name + " " + version + "  // updated\n"
+                    updated.append(name + " " + version)
+                    break
+        gomods.append(line)
+
+    if len(updated) > 0:
+        print("Module updated:")
+        for line in updated:
+            print("  " + line)
+        if args.write:
+            open(args.gomod, "w").write("".join(gomods))
+        else:
+            print("Run with -w to update {}".format(args.gomod))
+    else:
+        print("{} is ok".format(args.gomod))
+
+
+if __name__ == "__main__":
+    main()
+EOF
+    chmod 755 "${GOPATH}/updatemods"
 
     echo "Making archive compression=${compression}"
     if [[ ${mode} == bin ]]; then
@@ -198,6 +287,17 @@ EOF
     # we're done
     echo "Done"
     echo
+}
+
+
+dl_111module()
+{
+    local name="$1"
+    local mode="$2"  # possible values: mod bin
+    shift 2
+    dl_111module_setup "${name}"
+    dl_111module_add "${mode}" "$@"
+    dl_111module_finish "${name}" "${mode}"
 }
 
 #
@@ -316,6 +416,18 @@ parse_go_config()
 }'
 }
 
+# add @latest if version is not present
+add_version_if_missing()
+{
+    while read mod; do
+        if [[ ${mod} =~ @ ]]; then
+            echo "${mod}"
+        else
+            echo "${mod}@latest"
+        fi
+    done
+}
+
 #
 # main routine
 #
@@ -354,9 +466,9 @@ main()
         test)
             rm -f "${DESTDIR}"/go/dl/go/test[1-9].*
 
-            compression=J dl_111module test1 bin golang.org/x/example/hello
-            compression=z dl_111module test2 on rsc.io/quote@v1.5.2
-            compression=j dl_111module test3 on golang.org/x/text@v0.3.3 golang.org/x/example@v0.0.0-20210407023211-09c3a5e06b5d
+            compression=J dl_111module test1 bin golang.org/x/example/hello@latest
+            compression=z dl_111module test2 mod rsc.io/quote@v1.5.2
+            compression=j dl_111module test3 mod golang.org/x/text golang.org/x/example
             # nota: golang.org/x/text@v0.3.3 is mysteriously required when golang.org/x/example and rsc.io are both required
 
             return
@@ -374,7 +486,9 @@ main()
 
             # fetch the list of tools into the the source code of the extension
             list=($(vscode_gotools | filter_gopls | sort -u | adapt_version))
-            dl_111module "$1" bin ${list[*]}
+            dl_111module_setup "$1"
+            dl_111module_add bin ${list[*]}
+            dl_111module_finish "$1" bin
 
             return
             ;;
@@ -385,9 +499,17 @@ main()
         exit 1
     fi
 
-    # download Go module
-    local list=($(cat /config.txt | parse_go_config go))
-    dl_111module "${name}" on ${list[*]}
+    dl_111module_setup "${name}"
+
+    # Go module
+    local list=($(cat /config.txt | parse_go_config go | add_version_if_missing))
+    dl_111module_add mod ${list[*]}
+
+    # cmdlet
+    local listbin=($(cat /config.txt | parse_go_config gobin | add_version_if_missing))
+    dl_111module_add bin ${listbin[*]}
+
+    dl_111module_finish "${name}" mod
 }
 
 main "$@"

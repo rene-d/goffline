@@ -48,7 +48,9 @@ elif [[ "${1:-}" == "test" ]]; then
     echo "Testing Go without Internet connection"
     echo
 
-    #  test1: test compiled module
+    # --------------------------------------------------------------------------------
+    # test1: test compiled module
+    echo -e '\n\033[35mrunning test 1 ...\033[0m'
     docker run --rm -i -v "$PWD/dl:/dl" --network none go-pkgs-dl sh -c "
         printf '\033[1;34m'; /dl/go/test1.sh -h;
         printf '\033[1;37m'; /dl/go/test1.sh -i;
@@ -56,7 +58,9 @@ elif [[ "${1:-}" == "test" ]]; then
         printf '\033[0m';    /dl/go/test1.sh;
         hello && echo '\033[32mtest 1 is ok\033[0m'"
 
+    # --------------------------------------------------------------------------------
     # test2: test build with module (in Go module mode)
+    echo -e '\n\033[35mrunning test 2 ...\033[0m'
     (cat <<'EOF'
 package main
 import (
@@ -74,11 +78,14 @@ EOF
             ls -l /go;
             go env -w GO111MODULE=on ;
             go mod init hello ;
-            echo 'require rsc.io/quote v1.5.2' >> go.mod ;
+            echo 'require rsc.io/quote' >> go.mod ;
+            /go/updatemods -w ;
             go mod tidy ;
             go build ; ls -l hello ; ./hello"
 
+    # --------------------------------------------------------------------------------
     # test3: test add second module archive
+    echo -e '\n\033[35mrunning test 3 ...\033[0m'
     (cat <<'EOF'
 package main
 import (
@@ -93,17 +100,19 @@ func main() {
 EOF
     ) | docker run --init -e TINI_KILL_PROCESS_GROUP=1 --rm -i -v "$PWD/dl:/dl" --network none -w /work go-pkgs-dl sh -c "
             cat > main.go ;
-            /diffmods.sh /dl/go/test2.sh /dl/go/test3.sh ;
+            # /diffmods.sh /dl/go/test2.sh /dl/go/test3.sh ;
             cat /dl/go/test2.sh | sh ;
             cat /dl/go/test3.sh | sh ;
             ls -l /go;
             go env -w GO111MODULE=on ;
             go mod init hello ;
             echo 'require rsc.io/quote v1.5.2' >> go.mod ;
-            echo 'require golang.org/x/example v0.0.0-20210407023211-09c3a5e06b5d' >> go.mod ;
+            /go/findmod golang.org/x/example >> go.mod ;
+            /go/findmod golang.org/x/text    >> go.mod ;
             go mod tidy ;
             go build ; ls -l hello ; ./hello"
 
+    echo ""
 	do_chown
 
 else
