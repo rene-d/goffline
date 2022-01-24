@@ -26,10 +26,10 @@ The result will be two files:
 Make a self-extracting archive of Go modules used by the [Go extension](https://marketplace.visualstudio.com/items?itemName=golang.go) for Visual Studio Code (only the compiled binaries, seems to be sufficient):
 
 ```bash
-./golang.sh vscode-bin
+./golang.sh vscode
 ```
 
-Nota: the program tries to dermine the needed tools, that is pretty difficult and hazardous. It tries to analyse the [goTools.go](https://github.com/golang/vscode-go/blob/master/src/goTools.ts), but without making the sophisticated checks of versions and needs.
+Nota: the program tries to dermine the needed tools, that is pretty difficult and hazardous. It tries to analyse the [goToolsInformation.go](https://github.com/golang/vscode-go/blob/master/src/goToolsInformation.ts), but without making the sophisticated checks of versions and needs.
 
 Download current stable version of [Visual Studio Code](https://code.visualstudio.com), some extensions and the remote server (for [remote development](https://code.visualstudio.com/docs/remote/remote-overview)):
 
@@ -39,7 +39,7 @@ Download current stable version of [Visual Studio Code](https://code.visualstudi
 
 ## Configuration
 
-See [config.txt](./config.txt) for an example of module and extenion list.
+See [config.txt](./config.txt) for an example of module and extension list.
 
 ## Test
 
