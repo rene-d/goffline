@@ -47,11 +47,19 @@ dl_111module()
             for i; do echo "  $i"; done
 
             for i; do
+                local module=$(echo $i | cut -d= -f1)
+                local bin=$(echo $module | sed -E 's?.*/([^/]+)@.*?\1?')
+                local name=$(echo $i | cut -d= -f2)
                 echo
-                echo "~~~~~~~~~~ $i ~~~~~~~~~~"
-                env GOARCH=arm64 go get $i
-                env GOARCH=amd64 go get $i
+                echo "~~~~~~~~~~ ${module} ${name} ~~~~~~~~~~"
+                rm -rf /build
+                mkdir -p "${GOPATH}"
+                env GOPATH=/build GOARCH=arm64 go install "${module}"
+                env GOPATH=/build GOARCH=amd64 go install "${module}"
+                find /build/bin -name "${bin}" -execdir mv -n {} "${name}" \;
+                cp -rp /build/bin "${GOPATH}"
             done
+            find /go/bin -ls
             ;;
 
         on)
@@ -88,6 +96,7 @@ dl_111module()
 
     # Retrieve the list of modules/version
     local mods
+    mkdir -p "${GOPATH}/pkg/mod/cache/download"
     mods=($(cd ${GOPATH}/pkg/mod/cache/download && find . -name '*.zip' | cut -d/ -f2- | sed -r 's,/@v/(.*)\.zip$,@\1,' | sed -e 's/!\([a-z]\)/\u\1/' | sort ))
 
     # save the module list info a text file
@@ -191,13 +200,17 @@ EOF
     echo
 }
 
+#
+# Binary (precompiled) assets stuff
+#
+
 get_latest_release()
 {
     local repo="$1"
     local asset="$2"
     local url
     url=$(curl -s "https://api.github.com/repos/${repo}/releases/latest" |
-          jq -r '.assets | map(select(.name | match("'${asset}'")).browser_download_url)[]' | head -n1)
+          jq --arg asset ${asset} -r '.assets | map(select(.name | match($asset)).browser_download_url)[]' | head -n1)
 
     echo -e "tool: \033[1;36m$(basename ${url})\033[0m"
     wget -nv -nc -P "${DESTDIR}/go" "${url}"
@@ -213,24 +226,68 @@ dl_assets()
     done
 }
 
-filter_all()
-{
-    sed "s/^.*importPath: '\(.*\)',.*$/\1/p;d"
-}
+#
+# VSCode Go Extension stuff
+#
 
 filter_gopls()
 {
-    local m=
+    local name=
+    local importPath
+    local defaultVersion
+
     while read line; do
-        if [[ $line =~ "importPath: '" ]] ; then
-            if [[ $m ]]; then echo "$m"; fi
-            m=$(echo "$line" | cut -d\' -f2)
+        if [[ $line =~ "': {" ]]; then
+            # start of block
+            name=$(echo "$line" | cut -d\' -f2)
+            defaultVersion=
+            importPath=
+
+        elif [[ $line =~ "importPath: '" ]] ; then
+            importPath=$(echo "$line" | cut -d\' -f2)
+
+        elif [[ $line =~ "replacedByGopls: true" ]]; then
+            echo >&2 "  skip $name $importPath (replaced by gopls)"
+            name=
+
+        elif [[ $line =~ "defaultVersion: " ]]; then
+            defaultVersion=$(echo "$line" | cut -d\' -f2)
+
+        elif [[ $line == }, ]]; then
+            # end of block
+            if [[ $name ]]; then
+                echo >&2 "  get  $importPath@${defaultVersion:=latest} as $name"
+                echo "$importPath@${defaultVersion:=latest}=$name"
+            fi
         fi
-        if [[ $line =~ "replacedByGopls: true" ]]; then echo >&2 "  skip $m (replaced by gopls)"; m=; fi
-        # if [[ $line =~ "isImportant: false" ]] && [[ $m ]]; then echo >&2 "  skip $m (non important)"; m=; fi
     done
-    if [[ $m ]]; then echo "$m"; fi
 }
+
+# compare two semver (leq=less than or equal)
+semver_leq()
+{
+    printf '%s\n%s' "$1" "$2" | sort -C -V
+}
+
+# get tool list from https://github.com/golang/vscode-go
+vscode_gotools()
+{
+    local tag=$(curl -sL https://api.github.com/repos/golang/vscode-go/releases/latest | jq -r '.tag_name')
+    if [[ ! ${tag} ]]; then
+        exit 2
+    fi
+
+    # tools information has been moved in v0.26.0
+    if semver_leq "${tag}" "v0.26.0"; then
+        curl -sL "https://raw.githubusercontent.com/golang/vscode-go/${tag}/src/goTools.ts"
+    else
+        curl -sL "https://raw.githubusercontent.com/golang/vscode-go/${tag}/src/goToolsInformation.ts"
+    fi
+}
+
+#
+# Other stuff
+#
 
 adapt_version()
 {
@@ -259,26 +316,9 @@ parse_go_config()
 }'
 }
 
-semver_lte()
-{
-    printf '%s\n%s' "$1" "$2" | sort -C -V
-}
-
-# get tool list from https://github.com/golang/vscode-go
-vscode_gotools()
-{
-    local tag=$(curl -sL https://api.github.com/repos/golang/vscode-go/releases/latest | jq -r ".tag_name")
-    if [[ ! ${tag} ]]; then
-        exit 2
-    fi
-
-    # tools information has been moved in v0.26.0
-    if semver_lte "${tag}" "v0.26.0"; then
-        curl -sL "https://raw.githubusercontent.com/golang/vscode-go/${tag}/src/goTools.ts"
-    else
-        curl -sL "https://raw.githubusercontent.com/golang/vscode-go/${tag}/src/goToolsInformation.ts"
-    fi
-}
+#
+# main routine
+#
 
 usage()
 {
@@ -330,25 +370,11 @@ main()
             ;;
 
         vscode*)
-            local filter
-            local mode
             local list
 
-            if [[ "$1" =~ -full ]]; then
-                filter=filter_all
-            else
-                filter=filter_gopls
-            fi
-            # if [[ $i =~ -bin ]]; then
-            #     mode=bin
-            # else
-            #     mode=on
-            # fi
-            mode=bin
-
             # fetch the list of tools into the the source code of the extension
-            list=($(vscode_gotools | $filter | sort -u | adapt_version))
-            dl_111module "$1" ${mode} ${list[*]}
+            list=($(vscode_gotools | filter_gopls | sort -u | adapt_version))
+            dl_111module "$1" bin ${list[*]}
 
             return
             ;;

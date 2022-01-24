@@ -13,19 +13,19 @@ import configparser
 
 
 def find_vsix(vsix_dir: Path, vsix_name: str, arch: str = "x86_64") -> Path:
-    """ Find the most recent vsix in the download directory. """
+    """Find the most recent vsix in the download directory."""
 
-    if vsix_name == "ms-vscode.cpptools":
-        if arch == "aarch64":
-            vsix_name = "ms-vscode.cpptools-linux-aarch64"
-        else:
-            vsix_name = "ms-vscode.cpptools-linux"
+    # use Windows semantics
+    if arch == "aarch64":
+        arch = "arm64"
+    else:
+        arch = "x64"
 
     last_version = (-1,)
 
-    # make a case insensitive regex that match "<name>-x.y.z.vsix"
+    # make a case insensitive regex that match "<name>[-linux-{arch}]-x.y.z.vsix"
     p = re.compile(
-        vsix_name.replace(".", r"\.").replace("-", r"\-") + "\-(\d+\.\d+\.\d+)\.vsix",
+        r"^" + re.escape(vsix_name) + rf"(?:\-linux\-{arch})?\-(\d+\.\d+\.\d+)\.vsix",
         re.IGNORECASE,
     )
 
@@ -45,7 +45,7 @@ def find_vsix(vsix_dir: Path, vsix_name: str, arch: str = "x86_64") -> Path:
 
 
 def make_host(download_dir: Path, version: str, host_extensions: List):
-    """ Make the archive for host extensions that should be unzipped in %USERPROFILE% / $HOME. """
+    """Make the archive for host extensions that should be unzipped in %USERPROFILE% / $HOME."""
 
     zip_file = download_dir / f"VSCode-host-extensions-{version}.zip"
 
@@ -84,7 +84,7 @@ def make_remote(
     remote_extension: List,
     arch: str = "x86_64",
 ):
-    """ Make the archive for remote extensions that should be extracted into $HOME. """
+    """Make the archive for remote extensions that should be extracted into $HOME."""
 
     tar_remote = tarfile.open(download_dir / f"vscode-server+extensions-{arch}-{version}.tar.xz", mode="w:xz")
 
@@ -139,7 +139,7 @@ def make_remote(
 
 
 def load_conf(download_dir, conf_file):
-    """ Use a configuration file to build the host and remote archives. """
+    """Use a configuration file to build the host and remote archives."""
 
     config = configparser.ConfigParser(allow_no_value=True)
     if conf_file == "-":
@@ -184,6 +184,13 @@ def load_conf(download_dir, conf_file):
             commit,
             common + list(config["vscode:remote"].keys()),
             "x86_64",
+        )
+        make_remote(
+            download_dir,
+            version,
+            commit,
+            common + list(config["vscode:remote"].keys()),
+            "aarch64",
         )
 
 

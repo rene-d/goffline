@@ -3,7 +3,7 @@
 
 set -Eeuo pipefail
 
-GO_VERSION="${GO_VERSION:-1.16.8}"
+GO_VERSION="${GO_VERSION:-1.17.6}"
 
 DOCKER_SCAN_SUGGEST=false docker build --build-arg GO_VERSION="${GO_VERSION}" -t go-pkgs-dl .
 
@@ -42,7 +42,7 @@ elif [[ "${1:-}" == "test" ]]; then
     # unit tests
 
     # download only modules for the tests
-    docker run --init -e TINI_KILL_PROCESS_GROUP=1 --rm -i -v "$PWD/dl:/dl" go-pkgs-dl /main.sh test
+    docker run --init -e TINI_KILL_PROCESS_GROUP=1 --rm -i -v "$PWD/dl:/dl" go-pkgs-dl /goget.sh test
 
     # # try to install godoctor with Internet connection    echo
     echo "Testing Go without Internet connection"
@@ -115,7 +115,7 @@ else
     fi
 
     docker run --init -e TINI_KILL_PROCESS_GROUP=1 --rm -i -v "$PWD/dl:/dl" \
-        -e "GOFFLINE_VERSION=$(git describe --always --tags)" ${config} go-pkgs-dl /main.sh $*
+        -e "GOFFLINE_VERSION=$(git describe --always --tags)" ${config} go-pkgs-dl /goget.sh $*
 
     do_chown
 fi
