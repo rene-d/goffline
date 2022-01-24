@@ -25,9 +25,6 @@ jobs:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v2
 
-      # Runs a single command using the runners shell
-      - name: Go modules test with Go 1.14
-        run: GO_VERSION=1.14.15 ./golang.sh test
-
-      - name: Go modules test with Go 1.17.6
-        run: GO_VERSION=1.17.6 ./golang.sh test
+      # Runs a single command using the runners shells
+      - name: Go modules test with Go 1.17
+        run: GO_VERSION=1.17 ./golang.sh test

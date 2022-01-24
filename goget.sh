@@ -468,7 +468,7 @@ main()
 
             compression=J dl_111module test1 bin golang.org/x/example/hello@latest
             compression=z dl_111module test2 mod rsc.io/quote@v1.5.2
-            compression=j dl_111module test3 mod golang.org/x/text golang.org/x/example
+            compression=j dl_111module test3 mod rsc.io/quote golang.org/x/text golang.org/x/example
             # nota: golang.org/x/text@v0.3.3 is mysteriously required when golang.org/x/example and rsc.io are both required
 
             return
