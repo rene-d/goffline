@@ -42,7 +42,7 @@ dl_111module_setup()
 
 dl_111module_add()
 {
-    local mode="$1"  # possible values: on bin
+    local mode="$1"  # possible values: mod bin
     shift
 
     # get the modules twice (everything goes under $GOPATH)
@@ -53,13 +53,11 @@ dl_111module_add()
 
             for i; do
                 local module=$(echo $i | cut -d= -f1)
-                local bin=$(echo $module | sed -E 's?.*/([^/]+)@.*?\1?')
+                local bin=$(echo ${module} | sed -E 's?.*/([^/]+)@.*?\1?')
                 local name=
-
-                if [[ $module =~ = ]]; then
+                if [[ $i =~ = ]]; then
                     name=$(echo $i | cut -d= -f2)
                 fi
-
                 echo
                 echo "~~~~~~~~~~ ${module} ${name} ~~~~~~~~~~"
                 rm -rf /build
@@ -92,6 +90,8 @@ dl_111module_add()
             exit 2
             ;;
     esac
+
+    echo
 }
 
 dl_111module_finish()
@@ -135,9 +135,10 @@ exec awk -v a="$1" '{ if ($1==a) print "require " $0 }' /go/gomods.txt
 EOF
     chmod 755 "${GOPATH}/findmod"
 
-    cat <<'EOF' > "${GOPATH}/updatemods"
-#!/usr/bin/env python
-
+    # script to update the module versions in go.mod
+    cat <<'EOF' > "${GOPATH}/updategomod"
+#!/bin/bash
+exec $(which python3 || which python || which false) - <<'PYTHON' "$@"
 from __future__ import print_function
 import argparse
 from os.path import exists
@@ -195,8 +196,9 @@ def main():
 
 if __name__ == "__main__":
     main()
+PYTHON
 EOF
-    chmod 755 "${GOPATH}/updatemods"
+    chmod 755 "${GOPATH}/updategomod"
 
     echo "Making archive compression=${compression}"
     if [[ ${mode} == bin ]]; then

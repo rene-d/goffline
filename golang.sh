@@ -5,14 +5,14 @@ set -Eeuo pipefail
 
 GO_VERSION="${GO_VERSION:-1.17.6}"
 
-DOCKER_SCAN_SUGGEST=false docker build --build-arg GO_VERSION="${GO_VERSION}" -t go-pkgs-dl .
+DOCKER_SCAN_SUGGEST=false docker build --build-arg GO_VERSION="${GO_VERSION}" -t goffline .
 
 do_chown()
 {
     # fix docker rootfull bind mount rights
     if find "$PWD/dl" -user root -print -quit | grep -q "." ; then
         echo "Change owner to $(id -un)"
-        exec docker run --rm -i -v "$PWD/dl:/dl" go-pkgs-dl chown -R "$(id -u):$(id -g)" /dl
+        exec docker run --rm -i -v "$PWD/dl:/dl" goffline chown -R "$(id -u):$(id -g)" /dl
     fi
 }
 
@@ -26,12 +26,12 @@ if [[ "${1:-}" == "build_only" ]]; then
 elif [[ "${1:-}" == "shell" ]]; then
     # launch a shell into the container
 
-    exec docker run --rm -ti -v "$PWD:/wd" -w /wd go-pkgs-dl
+    exec docker run --rm -ti -v "$PWD:/wd" -w /wd goffline
 
 elif [[ "${1:-}" == "rshell" ]]; then
     # launch a shell into the container without network access
 
-    exec docker run --network none --rm -ti -v "$PWD:/wd" -w /wd go-pkgs-dl
+    exec docker run --network none --rm -ti -v "$PWD:/wd" -w /wd goffline
 
 elif [[ "${1:-}" == "chown" ]]; then
     # chown files if Docker is ran rootfull
@@ -42,7 +42,7 @@ elif [[ "${1:-}" == "test" ]]; then
     # unit tests
 
     # download only modules for the tests
-    docker run --init -e TINI_KILL_PROCESS_GROUP=1 --rm -i -v "$PWD/dl:/dl" go-pkgs-dl /goget.sh test
+    docker run --init -e TINI_KILL_PROCESS_GROUP=1 --rm -i -v "$PWD/dl:/dl" goffline /goget.sh test
 
     # # try to install godoctor with Internet connection    echo
     echo "Testing Go without Internet connection"
@@ -51,11 +51,12 @@ elif [[ "${1:-}" == "test" ]]; then
     # --------------------------------------------------------------------------------
     # test1: test compiled module
     echo -e '\n\033[35mrunning test 1 ...\033[0m'
-    docker run --rm -i -v "$PWD/dl:/dl" --network none go-pkgs-dl sh -c "
+    docker run --rm -i -v "$PWD/dl:/dl" --network none goffline sh -c "
         printf '\033[1;34m'; /dl/go/test1.sh -h;
         printf '\033[1;37m'; /dl/go/test1.sh -i;
         printf '\033[1;31m'; /dl/go/test1.sh -m;
         printf '\033[0m';    /dl/go/test1.sh;
+        go version ;
         hello && echo '\033[32mtest 1 is ok\033[0m'"
 
     # --------------------------------------------------------------------------------
@@ -72,14 +73,14 @@ func main() {
     fmt.Println("\033[32mtest 2 is ok\033[0m")
 }
 EOF
-    ) | docker run --rm -i -v "$PWD/dl:/dl" --network none -w /work go-pkgs-dl sh -c "
+    ) | docker run --rm -i -v "$PWD/dl:/dl" --network none -w /work goffline sh -c "
             cat > main.go ;
             cat /dl/go/test2.sh | sh;
             ls -l /go;
             go env -w GO111MODULE=on ;
             go mod init hello ;
             echo 'require rsc.io/quote' >> go.mod ;
-            /go/updatemods -w ;
+            /go/updategomod -w ;
             go mod tidy ;
             go build ; ls -l hello ; ./hello"
 
@@ -98,7 +99,7 @@ func main() {
     fmt.Println("\033[32mtest 3 is ok\033[0m")
 }
 EOF
-    ) | docker run --init -e TINI_KILL_PROCESS_GROUP=1 --rm -i -v "$PWD/dl:/dl" --network none -w /work go-pkgs-dl sh -c "
+    ) | docker run --init -e TINI_KILL_PROCESS_GROUP=1 --rm -i -v "$PWD/dl:/dl" --network none -w /work goffline sh -c "
             cat > main.go ;
             cat /dl/go/test3.sh | sh ;
             ls -l /go;
@@ -122,7 +123,7 @@ else
     fi
 
     docker run --init -e TINI_KILL_PROCESS_GROUP=1 --rm -i -v "$PWD/dl:/dl" \
-        -e "GOFFLINE_VERSION=$(git describe --always --tags)" ${config} go-pkgs-dl /goget.sh $*
+        -e "GOFFLINE_VERSION=$(git describe --always --tags)" ${config} goffline /goget.sh $*
 
     do_chown
 fi

@@ -13,7 +13,7 @@ if [[ ! -f /.dockerenv ]]; then
     fi
 
     "$(dirname "${BASH_SOURCE[0]}")/golang.sh" build_only
-    exec docker run --init -e TINI_KILL_PROCESS_GROUP=1 --rm -ti -v "$PWD/dl:/dl" ${list} -w / ${list} go-pkgs-dl /vscode.sh
+    exec docker run --init -e TINI_KILL_PROCESS_GROUP=1 --rm -ti -v "$PWD/dl:/dl" ${list} -w / ${list} goffline /vscode.sh
 fi
 
 # channel=insider
