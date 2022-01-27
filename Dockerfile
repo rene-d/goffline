@@ -1,6 +1,6 @@
-ARG GO_VERSION=1.16.8
+ARG GO_VERSION=1.17.6
 
-FROM golang:${GO_VERSION}-buster
+FROM golang:${GO_VERSION}
 
 ENV DEBIAN_FRONTEND=noninteractive
 

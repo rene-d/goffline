@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # Download the last Visual Studio Code extension compatible with a given version
 
-set -e
+set -euo pipefail
 
-slug=$1
-engine=${2:-1.56.2}
+slug=${1?missing extension identifier}
+engine=${2:-1.63.2}
 
 if [[ -z ${DESTDIR:+x} ]]; then
     dl_dir=.
@@ -69,18 +69,19 @@ EOF
 
 echo -e "extension: \033[1;33m${1}\033[0m"
 
+json_file=/tmp/extdl$$.json
+trap 'rm -f ${json_file}' EXIT
+
 # issue the request
-json=$(echo $data | curl -s \
-                         -X POST --data-binary @- \
-                         -H "Content-Type: application/json" \
-                         -H "Accept: application/json;api-version=3.0-preview.1" \
-                         "https://marketplace.visualstudio.com/_apis/public/gallery/extensionquery"
-)
+echo $data | curl -s \
+                  -o ${json_file} \
+                  -X POST --data-binary @- \
+                  -H "Content-Type: application/json" \
+                  -H "Accept: application/json;api-version=3.0-preview.1" \
+                  "https://marketplace.visualstudio.com/_apis/public/gallery/extensionquery"
 
 # the extension name
-name=$(echo $json | jq -r '.results[].extensions[] | (.publisher.publisherName + "." + .extensionName)')
-# mkdir -p dl/logs
-# echo $json | jq . > dl/logs/${name}.json
+name=$(cat ${json_file} | jq -r '.results[].extensions[] | (.publisher.publisherName + "." + .extensionName)')
 
 # https://stackoverflow.com/questions/4023830
 # not sure it works all the time, some version numbers may be messy
@@ -118,7 +119,9 @@ vercomp()
 
 # get all version engines (recent first)
 set -f # engine version could be "*" - really annoying in a shell script
-engines=($(echo $json | jq -r '.results[].extensions[].versions[].properties | map(select(.key | contains("Microsoft.VisualStudio.Code.Engine")).value)[]' 2>/dev/null || true))
+engines=($(cat ${json_file} | jq -r \
+    '.results[].extensions[].versions[].properties | map(select(.key | contains("Microsoft.VisualStudio.Code.Engine")).value)[]' \
+    2>/dev/null || true))
 
 # find the first suitable engine
 version_index=
@@ -140,7 +143,8 @@ if [[ ! ${version_index} ]]; then
 fi
 
 # we have the good version
-version=$(echo $json | jq -r '.results[].extensions[] | (.versions['${version_index}'].version)')
+version=$(cat ${json_file} | jq --argjson vi ${version_index} -r \
+    '.results[].extensions[] | (.versions[$vi].version)')
 echo -e "version: \033[1;32m${version}\033[0m"
 
 mkdir -p "${dl_dir}"
@@ -154,24 +158,69 @@ curl_no_clobber()
     fi
 }
 
-if [[ $name == "ms-vscode.cpptools" ]]; then
-    # C/C++ extension has to be downloaded from GitHub releases since it is platform dependent
+targetPlaforms=($(cat ${json_file} | jq --arg v $version -r \
+    '.results[].extensions[].versions[] | select(.version==$v).targetPlatform'))
 
-    vsix=${name}-linux-aarch64-${version}.vsix
+echo -e "targetPlaforms: \033[1;32m${targetPlaforms[@]}\033[0m"
+
+if [[ ${targetPlaforms[0]} != "null" ]]; then
+
+    dl_arch()
+    {
+        local arch=$1
+
+        # construct the vsix filename
+        vsix=$(cat ${json_file} | jq --arg arch ${arch} --argjson vi ${version_index} -r \
+            '.results[].extensions[] | (.publisher.publisherName+"."+ .extensionName+"-"+$arch+"-"+.versions[$vi].version+".vsix")')
+
+        # construct the vsix filename with the platform
+        assetUri=$(cat ${json_file} | jq --arg arch ${arch} --arg v ${version} -r \
+            '.results[].extensions[].versions[] | select(.version==$v and .targetPlatform==$arch).assetUri')
+        echo -e "vsix: \033[1;36m${vsix}\033[0m"
+
+        # download the .vsix (e.g. the archive of the extension)
+        curl_no_clobber "${dl_dir}/${vsix}" "$assetUri/Microsoft.VisualStudio.Services.VSIXPackage"
+    }
+
+    # assume we always have linux-x64 and linux-arm64 platforms
+    dl_arch linux-x64
+    dl_arch linux-arm64
+
+elif [[ $name == "ms-vscode.cpptools" ]]; then
+
+    # old C/C++ extension has to be downloaded from GitHub releases since it is platform dependent
+
+    vsix=${name}-linux-arm64-${version}.vsix
     echo -e "vsix: \033[1;36m${vsix}\033[0m"
     curl_no_clobber "${dl_dir}/${vsix}" https://github.com/microsoft/vscode-cpptools/releases/download/${version}/cpptools-linux-aarch64.vsix
 
-    vsix=${name}-linux-${version}.vsix
+    vsix=${name}-linux-x64-${version}.vsix
     echo -e "vsix: \033[1;36m${vsix}\033[0m"
     curl_no_clobber "${dl_dir}/${vsix}" https://github.com/microsoft/vscode-cpptools/releases/download/${version}/cpptools-linux.vsix
+
+
+elif [[ $name == "vadimcn.vscode-lldb" ]]; then
+
+    # CodeLLDB extension has to be downloaded from GitHub releases since it is platform dependent
+
+    vsix=${name}-linux-arm64-${version}.vsix
+    echo -e "vsix: \033[1;36m${vsix}\033[0m"
+    curl_no_clobber "${dl_dir}/${vsix}" https://github.com/vadimcn/vscode-lldb/releases/download/v${version}/codelldb-aarch64-linux.vsix
+
+    vsix=${name}-linux-x64-${version}.vsix
+    echo -e "vsix: \033[1;36m${vsix}\033[0m"
+    curl_no_clobber "${dl_dir}/${vsix}" https://github.com/vadimcn/vscode-lldb/releases/download/v${version}/codelldb-x86_64-linux.vsix
+
+
 else
     # construct the vsix filename
-    vsix=$(echo $json | jq -r '.results[].extensions[] | (.publisher.publisherName+"."+ .extensionName+ "-"+.versions['${version_index}'].version)')
-    vsix=${vsix}.vsix
+    vsix=$(cat ${json_file} | jq --argjson vi ${version_index} -r \
+        '.results[].extensions[] | (.publisher.publisherName+"."+ .extensionName+ "-"+.versions[$vi].version+".vsix")')
     echo -e "vsix: \033[1;36m${vsix}\033[0m"
 
     # extract the uri from the JSON
-    assetUri=$(echo $json | jq -r '.results[].extensions[].versions['${version_index}'].assetUri')
+    assetUri=$(cat ${json_file} | jq --argjson vi ${version_index} -r \
+        '.results[].extensions[].versions[$vi].assetUri')
 
     # download the .vsix (e.g. the archive of the extension)
     curl_no_clobber "${dl_dir}/${vsix}" "$assetUri/Microsoft.VisualStudio.Services.VSIXPackage"
