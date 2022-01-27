@@ -1,7 +1,6 @@
 ARG GO_VERSION=1.17.6
-ARG DEBIAN_VERSION=buster
 
-FROM golang:${GO_VERSION}-${DEBIAN_VERSION}
+FROM golang:${GO_VERSION}-bullseye
 
 ENV DEBIAN_FRONTEND=noninteractive
 
