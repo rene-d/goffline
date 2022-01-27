@@ -26,5 +26,5 @@ jobs:
       - uses: actions/checkout@v2
 
       # Runs a single command using the runners shells
-      - name: Go modules test with Go 1.17
-        run: GO_VERSION=1.17 ./golang.sh test
+      - name: Go modules test with Go 1.16
+        run: GO_VERSION=1.16 ./golang.sh test
