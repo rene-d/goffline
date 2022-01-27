@@ -1,6 +1,6 @@
 ARG GO_VERSION=1.17.6
 
-FROM golang:${GO_VERSION}-bullseye
+FROM golang:${GO_VERSION}
 
 ENV DEBIAN_FRONTEND=noninteractive
 
