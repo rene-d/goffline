@@ -8,10 +8,6 @@ golang.org/x/term
 [gobin]
 golang.org/x/example/hello
 
-# tools: assets on github releases
-[gotools]
-golangci/golangci-lint
-
 # extensions that should be packaged for the host
 [vscode:host]
 ms-vscode-remote.remote-ssh

@@ -3,18 +3,27 @@
 
 set -Eeuo pipefail
 
-DESTDIR="${DESTDIR:-.}"
+DESTDIR=./dl
+CONFIG=${1:-config.txt}
 
-if [[ ! -f /.dockerenv ]]; then
-    list=
-    if [[ -f "${1:-}" ]]; then
-        list="-v $(realpath "$1"):/config.txt:ro"
-        shift
-    fi
-
-    "$(dirname "${BASH_SOURCE[0]}")/golang.sh" build_only
-    exec docker run --init -e TINI_KILL_PROCESS_GROUP=1 --rm -ti -v "$PWD/dl:/dl" ${list} -w / ${list} goffline /vscode.sh
+if [ ! -f "$CONFIG" ]; then
+    echo "Usage: $0 <config>"
+    exit 1
 fi
+
+# DESTDIR="${DESTDIR:-.}"
+# if [[ ! -f /.dockerenv ]]; then
+#     list=
+#     if [[ -f "${1:-}" ]]; then
+#         list="-v $(realpath "$1"):/config.txt:ro"
+#         shift
+#     fi
+#     "$(dirname "${BASH_SOURCE[0]}")/golang.sh" build_only
+#     exec docker run --init -e TINI_KILL_PROCESS_GROUP=1 --rm -ti -v "$PWD/dl:/dl" ${list} -w / ${list} goffline /vscode.sh
+# fi
+
+###############################################################################
+echo -e "\n\033[1;34m🍻 Downloading VSCode\033[0m"
 
 # channel=insider
 channel=stable
@@ -54,18 +63,12 @@ wget -nv -nc -P "${DESTDIR}/vscode-${version}" $(get_link "https://update.code.v
 wget -nv -nc -P "${DESTDIR}/vscode-${version}" $(get_link "https://update.code.visualstudio.com/commit:${commit}/server-linux-arm64/${channel}")
 set -e
 
-filter_vscode_config()
-{
-    awk '{ if ($1 ~ /^#/) next; if ($1 ~ /^\[/) section=$1; else if ($1 !~ /^$/) if (section ~ /^\[vscode.*\]$/) print $1  }'
-}
 
-# download the extensions
-extensions=($(cat config.txt | filter_vscode_config | sort -u))
+###############################################################################
+echo -e "\n\033[1;34m🍻 Downloading extenions\033[0m"
+$(dirname $0)/vscodeext.py -e ${version} -o ${DESTDIR}/vscode-extensions-${version} -f $CONFIG
 
-# open question: how to find the engine version ?
-# guess: vscode uses its version number (for example 1.55.2)
-for i in "${extensions[@]}"; do
-    echo
-    ./ext.sh "$i" "${version}"
-done
-echo
+
+###############################################################################
+echo -e "\n\033[1;34m🍻 Packaging extenions and vscode-server\033[0m"
+$(dirname $0)/vscodedist.py -d ${DESTDIR} -f $CONFIG
