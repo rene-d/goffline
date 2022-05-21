@@ -5,9 +5,6 @@
 golang.org/x/sys
 golang.org/x/term
 
-[gobin]
-golang.org/x/example/hello
-
 # extensions that should be packaged for the host
 [vscode:host]
 ms-vscode-remote.remote-ssh
