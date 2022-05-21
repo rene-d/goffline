@@ -49,10 +49,8 @@ def main():
     print(f"Visual Studio Code: \033[1;33m{args.channel}\033[0m")
 
     # retrieve Windows version download link
-    if args.version == "latest":
-        url = f"https://code.visualstudio.com/sha/download?build={args.channel}&os=win32-x64-archive"
-    else:
-        url = f"https://update.code.visualstudio.com/{args.version}/win32-x64-archive/{args.channel}"
+    # ref: https://code.visualstudio.com/docs/supporting/faq#_previous-release-versions
+    url = f"https://update.code.visualstudio.com/{args.version}/win32-x64-archive/{args.channel}"
 
     r = requests.get(url, allow_redirects=False)
     if r is None or r.status_code != 302:
@@ -90,6 +88,7 @@ def main():
     urls = [
         f"https://update.code.visualstudio.com/{version}/win32-x64-archive/{channel}",
         f"https://update.code.visualstudio.com/{version}/linux-x64/{channel}",
+        f"https://update.code.visualstudio.com/{version}/linux-deb-x64/{channel}",
         f"https://update.code.visualstudio.com/commit:{commit_id}/server-linux-x64/{channel}",
         f"https://update.code.visualstudio.com/commit:{commit_id}/server-linux-arm64/{channel}",
     ]
