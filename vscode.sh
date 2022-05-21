@@ -25,13 +25,10 @@ fi
 ###############################################################################
 echo -e "\n\033[1;34m🍻 Downloading VSCode\033[0m"
 $(dirname $0)/vscode.py -o ${DESTDIR}
-version=$(cat ${DESTDIR}/vscode-version)
-
 
 ###############################################################################
 echo -e "\n\033[1;34m🍻 Downloading extenions\033[0m"
-$(dirname $0)/vscodeext.py -e ${version} -o ${DESTDIR}/vscode-extensions-${version} -f $CONFIG
-
+$(dirname $0)/vscodeext.py -o ${DESTDIR} -f $CONFIG
 
 ###############################################################################
 echo -e "\n\033[1;34m🍻 Packaging extenions and vscode-server\033[0m"

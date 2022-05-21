@@ -92,29 +92,8 @@ def engine_match(pattern, engine):
 
 class Extension:
     def __init__(self, engine):
-        if engine == "latest":
-            engine, _ = self.find_latest()
         self.engine = engine
         self.downloads = {}
-
-    def find_latest(self, channel="stable"):
-        """Retrieve current VSCode version from Windows download link."""
-
-        url = f"https://code.visualstudio.com/sha/download?build={channel}&os=win32-x64-archive"
-        r = requests.get(url, allow_redirects=False)
-        if r is None or r.status_code != 302:
-            print(f"request error {r}")
-            exit(2)
-
-        url = r.headers["Location"]
-        m = re.search(r"/(\w+)/([a-f0-9]{40})/VSCode-win32-x64-([\d.]+).zip", url)
-        if not m or m[1] != channel:
-            print(f"cannot extract vscode version from url {url}")
-            exit(2)
-
-        _, commit_id, version = m.groups()
-        print(f"Using VSCode {version} {commit_id} {channel}")
-        return version, commit_id
 
     def _query(self, slugs):
         # prepare the request: we look for golang.Go extension
@@ -223,10 +202,30 @@ class Extension:
         find_version(extension, "linux-arm64")
 
 
+def vscode_latest_version(channel="stable"):
+    """Retrieve current VSCode version from Windows download link."""
+
+    url = f"https://code.visualstudio.com/sha/download?build={channel}&os=win32-x64-archive"
+    r = requests.get(url, allow_redirects=False)
+    if r is None or r.status_code != 302:
+        print(f"request error {r}")
+        exit(2)
+
+    url = r.headers["Location"]
+    m = re.search(r"/(\w+)/([a-f0-9]{40})/VSCode-win32-x64-([\d.]+).zip", url)
+    if not m or m[1] != channel:
+        print(f"cannot extract vscode version from url {url}")
+        exit(2)
+
+    _, commit_id, version = m.groups()
+    print(f"Using VSCode {version} {commit_id} {channel}")
+    return version, commit_id
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("-o", "--output", help="output dir", type=Path, default=".")
-    parser.add_argument("-e", "--engine", help="engine version", default="latest")
+    parser.add_argument("-e", "--engine", help="engine version", default="current")
     parser.add_argument("-f", "--conf", help="conf file", type=Path)
     parser.add_argument("slugs", help="extension identifier", nargs="*")
     args = parser.parse_args()
@@ -243,10 +242,19 @@ def main():
                 if in_section:
                     args.slugs.append(i)
 
+    if args.engine == "latest":
+        args.engine, _ = vscode_latest_version()
+    elif args.engine == "current":
+        args.engine = (args.output / "vscode-version").read_text().strip()
+        print(f"Using vscode {args.engine}")
+
+    dest_dir = args.output / f"vscode-extensions-{args.engine}"
+    dest_dir.mkdir(exist_ok=True, parents=True)
+
     e = Extension(args.engine)
     e.get_downloads(args.slugs)
     for k, v in e.downloads.items():
-        vsix = args.output / k
+        vsix = dest_dir / k
         if not vsix.exists():
             vsix.parent.mkdir(parents=True, exist_ok=True)
             print("downloading", vsix)
@@ -256,6 +264,8 @@ def main():
             url_date = parsedate(v[3])
             mtime = round(url_date.timestamp() * 1_000_000_000)
             os.utime(vsix, ns=(mtime, mtime))
+        else:
+            print(f"already downloaded: {vsix}")
 
 
 if __name__ == "__main__":
