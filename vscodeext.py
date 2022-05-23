@@ -2,12 +2,15 @@
 # Download the last Visual Studio Code extension compatible with a given version
 
 import argparse
+from hashlib import new
+from importlib.machinery import all_suffixes
 import json
 import requests
 from pathlib import Path
 import os
 from dateutil.parser import parse as parsedate
 import re
+import zipfile
 
 
 # constants from vscode extension API
@@ -34,6 +37,7 @@ Flags_IncludeAssetUri = 0x80
 Flags_IncludeStatistics = 0x100
 Flags_IncludeLatestVersionOnly = 0x200
 Flags_Unpublished = 0x1000
+Flags_IncludeNameConflictInfo = 0x8000
 
 
 def get_property(version, name):
@@ -91,15 +95,71 @@ def engine_match(pattern, engine):
 
 
 class Extension:
-    def __init__(self, engine):
+    def __init__(self, engine, verbose=False):
         self.engine = engine
+        self.verbose = verbose
+
+    def run(self, dest_dir, slugs):
+        """Download all extensions and packs."""
+
+        self.all_extensions = set()
+
+        self._get_downloads(slugs)
+        self._download_files(dest_dir)
+
+        while self.packs:
+            new_extensions = set()
+
+            for vsix in self.downloads:
+                if vsix in self.packs:
+                    zip = zipfile.ZipFile(dest_dir / vsix)
+                    m = json.loads(zip.open("extension/package.json").read())
+                    new_extensions.update(m["extensionPack"])
+                    zip.close()
+
+            new_extensions.difference_update(self.all_extensions)
+
+            self._get_downloads(new_extensions)
+            self._download_files(dest_dir)
+
+    def _download_files(self, dest_dir):
+        """Download extesions archive (VSIX)."""
+        for k, v in self.downloads.items():
+            vsix = dest_dir / k
+            if not vsix.exists():
+                vsix.parent.mkdir(parents=True, exist_ok=True)
+                print("downloading", vsix)
+                r = requests.get(v[2])
+                vsix.write_bytes(r.content)
+
+                url_date = parsedate(v[3])
+                mtime = round(url_date.timestamp() * 1_000_000_000)
+                os.utime(vsix, ns=(mtime, mtime))
+            else:
+                print(f"already downloaded: {vsix}")
+
+    def _get_downloads(self, slugs):
+        """Build the extension list to download."""
         self.downloads = {}
+        self.packs = set()
+        if not slugs:
+            return
+        r = self._query(slugs)
+        for result in r["results"]:
+            for extension in result["extensions"]:
+                vsix = self._get_download(extension)
+                if "Extension Packs" in extension["categories"]:
+                    self.packs.update(vsix)
+
+                self.all_extensions.update(vsix)
 
     def _query(self, slugs):
-        # prepare the request: we look for golang.Go extension
-        #   - last version (Flags.IncludeLatestVersionOnly)
-        #   - we want the assets uri (Flags.IncludeAssetUri)
-        #   - details (Flags.IncludeVersionProperties)
+        """
+        Prepare the request tp the extension server, with::
+           - assets uri (Flags.IncludeAssetUri)
+           - details (Flags.IncludeVersionProperties)
+           - categories (Flags.IncludeCategoryAndTags)
+        """
         data = {
             "filters": [
                 {
@@ -119,7 +179,7 @@ class Extension:
                     ]
                 }
             ],
-            "flags": Flags_IncludeAssetUri + Flags_IncludeVersionProperties,
+            "flags": Flags_IncludeAssetUri + Flags_IncludeVersionProperties + Flags_IncludeCategoryAndTags,
         }
 
         for slug in slugs:
@@ -135,18 +195,12 @@ class Extension:
                 "Accept": "application/json;api-version=3.0-preview.1",
             },
         )
-        # Path("r.json").write_bytes(r.content)
+        if self.verbose:
+            Path("query.json").write_text(data)
+            Path("response.json").write_bytes(r.content)
         r = r.json()
-        # r = json.load(open("r.json"))
+        # r = json.load(open("response.json"))
         return r
-
-    def get_downloads(self, slugs):
-        if not slugs:
-            return
-        r = self._query(slugs)
-        for result in r["results"]:
-            for extension in result["extensions"]:
-                self._get_download(extension)
 
     def _get_download(self, extension):
 
@@ -197,9 +251,12 @@ class Extension:
                 assert self.downloads[vsix] == download
 
             self.downloads[vsix] = download
+            return vsix
 
-        find_version(extension, "linux-x64")
-        find_version(extension, "linux-arm64")
+        vsix = set()
+        vsix.add(find_version(extension, "linux-x64"))
+        vsix.add(find_version(extension, "linux-arm64"))
+        return vsix
 
 
 def vscode_latest_version(channel="stable"):
@@ -224,6 +281,7 @@ def vscode_latest_version(channel="stable"):
 
 def main():
     parser = argparse.ArgumentParser()
+    parser.add_argument("-v", "--verbose", help="verbose and debug info", action="store_true")
     parser.add_argument("-o", "--output", help="output dir", type=Path, default=".")
     parser.add_argument("-e", "--engine", help="engine version", default="current")
     parser.add_argument("-f", "--conf", help="conf file", type=Path)
@@ -251,21 +309,8 @@ def main():
     dest_dir = args.output / f"vscode-extensions-{args.engine}"
     dest_dir.mkdir(exist_ok=True, parents=True)
 
-    e = Extension(args.engine)
-    e.get_downloads(args.slugs)
-    for k, v in e.downloads.items():
-        vsix = dest_dir / k
-        if not vsix.exists():
-            vsix.parent.mkdir(parents=True, exist_ok=True)
-            print("downloading", vsix)
-            r = requests.get(v[2])
-            vsix.write_bytes(r.content)
-
-            url_date = parsedate(v[3])
-            mtime = round(url_date.timestamp() * 1_000_000_000)
-            os.utime(vsix, ns=(mtime, mtime))
-        else:
-            print(f"already downloaded: {vsix}")
+    e = Extension(args.engine, args.verbose)
+    e.run(dest_dir, args.slugs)
 
 
 if __name__ == "__main__":
