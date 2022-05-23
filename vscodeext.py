@@ -2,8 +2,6 @@
 # Download the last Visual Studio Code extension compatible with a given version
 
 import argparse
-from hashlib import new
-from importlib.machinery import all_suffixes
 import json
 import requests
 from pathlib import Path
