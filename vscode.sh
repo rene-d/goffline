@@ -24,12 +24,12 @@ fi
 
 ###############################################################################
 echo -e "\n\033[1;34m🍻 Downloading VSCode\033[0m"
-$(dirname $0)/vscode.py -o ${DESTDIR}
+$(dirname $0)/vscode-app.py -o ${DESTDIR}
 
 ###############################################################################
 echo -e "\n\033[1;34m🍻 Downloading extenions\033[0m"
-$(dirname $0)/vscodeext.py -o ${DESTDIR} -f $CONFIG
+$(dirname $0)/vscode-ext.py -o ${DESTDIR} -f $CONFIG
 
 ###############################################################################
 echo -e "\n\033[1;34m🍻 Packaging extenions and vscode-server\033[0m"
-$(dirname $0)/vscodedist.py -d ${DESTDIR} -f $CONFIG
+$(dirname $0)/vscode-dist.py -d ${DESTDIR} -f $CONFIG

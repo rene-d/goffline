@@ -70,7 +70,7 @@ def make_host(download_dir: Path, version: str, host_extensions: Set[str]):
                     else:
                         pass
 
-    print(f"Written: \033[1;31m{zip_file.name}\033[0m")
+    print(f"written: \033[1;32m{zip_file.name}\033[0m")
     print("Done")
     print()
 
@@ -132,7 +132,7 @@ def make_remote(
     tar_remote.close()
 
     p = Path(tar_remote.name)
-    print(f"Written: \033[1;31m{p.name}\033[0m")
+    print(f"written: \033[1;32m{p.name}\033[0m")
 
     # print(f"Compressing...")
     # subprocess.run(["xz", p.absolute()])

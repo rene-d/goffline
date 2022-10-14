@@ -1,6 +1,6 @@
-ARG GO_VERSION=1.18.1
+ARG GOLANG_VERSION
 
-FROM golang:${GO_VERSION}
+FROM golang:${GOLANG_VERSION}
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -11,3 +11,4 @@ RUN apt-get -qq update && \
 COPY *.sh *.py config.txt /
 
 ENV DESTDIR=/dl
+RUN go version

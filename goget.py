@@ -225,7 +225,7 @@ if __name__ == "__main__":
     def make_tar(self):
         """Make the tar archive."""
 
-        logging.info(f"Make archive with compression {self.compression}")
+        logging.info(f"Make archive with {self.compression} compression")
 
         # create the archive
         archive = Path("/tmp/go-modules.tar")

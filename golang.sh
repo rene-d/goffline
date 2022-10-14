@@ -3,9 +3,9 @@
 
 set -Eeuo pipefail
 
-GO_VERSION="${GO_VERSION:-1.18.1}"
+GOLANG_VERSION="${GOLANG_VERSION:-latest}"
 
-DOCKER_SCAN_SUGGEST=false docker build --build-arg GO_VERSION="${GO_VERSION}" -t goffline .
+DOCKER_SCAN_SUGGEST=false docker build --build-arg GOLANG_VERSION="${GOLANG_VERSION}" -t goffline .
 
 do_chown()
 {
@@ -47,7 +47,7 @@ else
     fi
 
     docker run --init -e TINI_KILL_PROCESS_GROUP=1 --rm -i -v "$PWD/dl:/dl" -w /dl \
-        -e "GOFFLINE_VERSION=$(git describe --always --tags)" ${config} goffline /goget.py -f /config.txt -c xz -o /dl $@
+        -e "GOFFLINE_VERSION=$(git describe --always --tags)" ${config} goffline /goget.py -f /config.txt -c xz -o /dl "$@"
 
     # do_chown
 fi
