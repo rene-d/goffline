@@ -9,6 +9,7 @@ import os
 from dateutil.parser import parse as parsedate
 import re
 import zipfile
+import subprocess
 
 
 # constants from vscode extension API
@@ -277,12 +278,58 @@ def vscode_latest_version(channel="stable"):
     return version, commit_id
 
 
+def check_local(slugs):
+    """
+    Compare the list of desired extensions with the list of locally installed extensions.
+    """
+    set_installed = set(subprocess.check_output(["code", "--list-extensions"]).decode().split())
+    set_wanted = set(slugs)
+
+    # check the case
+    set_installed_lowercase = set(map(str.lower, set_installed))
+    for i in set_wanted:
+        if i in set_installed:
+            continue
+        if i.lower() in set_installed_lowercase:
+            for j in set_installed:
+                if j.lower() == i.lower():
+                    print(f"Upper/lower case problem with {i}, should be {j}")
+            return 2
+
+    set3 = set_wanted.union(set_installed)
+    color_wanted = "95"
+    color_installed = "93"
+    extension, color, a, b = "extension", "37", "wanted", "installed"
+    print(f"\033[1;3;{color}m{extension:<55}\033[{color_wanted}m{a:^9}\033[{color_installed}m{b:^9}\033[0m")
+
+    for extension in sorted(set3):
+        a = extension in set_wanted
+        b = extension in set_installed
+        color = "37"
+        if not a and b:
+            color = color_installed
+        if a and not b:
+            color = color_wanted
+        a = "❌✅"[a]
+        b = "❌✅"[b]
+
+        # see explaination here:
+        # https://wezfurlong.org/wezterm/hyperlinks.html#explicit-hyperlinks
+        link = f"\033]8;;https://marketplace.visualstudio.com/items?itemName={extension}\033\\{extension}\033]8;;\033\\"
+        link += " " * (55 - len(extension))
+
+        print(f"\033[{color}m{link}\033[0m{a:^9}{b:^9}")
+
+    return 0
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("-v", "--verbose", help="verbose and debug info", action="store_true")
     parser.add_argument("-o", "--output", help="output dir", type=Path, default=".")
     parser.add_argument("-e", "--engine", help="engine version", default="current")
     parser.add_argument("-f", "--conf", help="conf file", type=Path)
+    parser.add_argument("--check-local", help=argparse.SUPPRESS, action="store_true")
     parser.add_argument("slugs", help="extension identifier", nargs="*")
     args = parser.parse_args()
 
@@ -297,6 +344,9 @@ def main():
             else:
                 if in_section:
                     args.slugs.append(i)
+
+    if args.check_local:
+        exit(check_local(args.slugs))
 
     if args.engine == "latest":
         args.engine, _ = vscode_latest_version()
