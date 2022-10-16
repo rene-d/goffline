@@ -8,6 +8,7 @@ from datetime import datetime
 import argparse
 from pathlib import Path
 import re
+import hashlib
 
 
 def find_vsix(vsix_dir: Path, vsix_name: str, arch: str = "x86_64") -> Path:
@@ -42,17 +43,31 @@ def find_vsix(vsix_dir: Path, vsix_name: str, arch: str = "x86_64") -> Path:
     return vsix
 
 
-def make_host(download_dir: Path, version: str, host_extensions: Set[str]):
+def make_host(output_dir: Path, version: str, host_extensions: Set[str]):
     """Make the archive for host extensions that should be unzipped in %USERPROFILE% / $HOME."""
 
-    zip_file = download_dir / f"VSCode-host-extensions-{version}.zip"
+    zip_file = output_dir / f"vscode-host-extensions-{version}.zip"
+    digest_file = zip_file.parent / ("." + zip_file.stem + ".digest")
+
+    # compute a hash with archive filenames
+    sha = hashlib.sha256()
+    for vsix_name in sorted(host_extensions):
+        vsix_file = find_vsix(output_dir / f"vscode-extensions-{version}", vsix_name)
+        sha.update(vsix_file.name.encode("utf-8"))
+    digest_hexvalue = sha.hexdigest()
+
+    # do not rebuild archive if up to date
+    if zip_file.is_file() and digest_file.is_file():
+        if digest_file.read_text() == digest_hexvalue:
+            print(f"\033[1;33mHost\033[0m extensions archive \033[1;32m{zip_file.name}\033[0m is up to date")
+            return
 
     print(f"Making \033[1;33mhost\033[0m extensions archive")
 
     with ZipFile(zip_file, "w") as zip_host:
         for vsix_name in host_extensions:
 
-            vsix_file = find_vsix(download_dir / f"vscode-extensions-{version}", vsix_name)
+            vsix_file = find_vsix(output_dir / f"vscode-extensions-{version}", vsix_name)
 
             # directory name contains the version and is lowercase
             vsix_dir = vsix_file.with_suffix("").name.lower()
@@ -70,13 +85,14 @@ def make_host(download_dir: Path, version: str, host_extensions: Set[str]):
                     else:
                         pass
 
+    digest_file.write_text(digest_hexvalue)
+
     print(f"written: \033[1;32m{zip_file.name}\033[0m")
     print("Done")
-    print()
 
 
 def make_remote(
-    download_dir: Path,
+    output_dir: Path,
     version: str,
     commit_id: str,
     remote_extension: Set[str],
@@ -84,19 +100,44 @@ def make_remote(
 ):
     """Make the archive for remote extensions that should be extracted into $HOME."""
 
-    tar_remote = tarfile.open(download_dir / f"vscode-server+extensions-{arch}-{version}.tar.xz", mode="w:xz")
-
-    print(f"Making \033[1;33mremote\033[0m extensions archive for arch {arch}")
+    tar_file = output_dir / f"vscode-server+extensions-{arch}-{version}.tar.xz"
+    digest_file = tar_file.parent / ("." + tar_file.stem + ".digest")
 
     if arch == "aarch64":
         server_archive = "vscode-server-linux-arm64.tar.gz"
-    else:
+    elif arch == "x86_64":
         server_archive = "vscode-server-linux-x64.tar.gz"
+    elif arch == "alpine-aarch64":
+        server_archive = "vscode-server-alpine-arm64.tar.gz"
+    elif arch == "alpine-x86_64":
+        server_archive = "vscode-server-linux-alpine.tar.gz"
+    else:
+        raise
+
+    # compute a hash with archive filenames
+    sha = hashlib.sha256()
+    sha.update(server_archive.encode("utf-8"))
+    for vsix_name in sorted(remote_extension):
+        vsix_file = find_vsix(output_dir / f"vscode-extensions-{version}", vsix_name, arch)
+        sha.update(vsix_file.name.encode("utf-8"))
+    digest_hexvalue = sha.hexdigest()
+
+    # do not rebuild archive if up to date
+    if tar_file.is_file() and digest_file.is_file():
+        if digest_file.read_text() == digest_hexvalue:
+            print(
+                f"\033[1;33mRemote\033[0m extensions archive for arch \033[1;33m{arch}\033[0m \033[1;32m{tar_file.name}\033[0m is up to date"
+            )
+            return
+
+    print(f"Making \033[1;33mremote\033[0m extensions archive for arch \033[1;33m{arch}\033[0m")
+
+    tar_remote = tarfile.open(tar_file, mode="w:xz")
 
     print(f"adding server {server_archive}")
 
     basedir = f".vscode-server/bin/{commit_id}"
-    server = tarfile.open(download_dir / f"vscode-{version}/{server_archive}", mode="r:gz")
+    server = tarfile.open(output_dir / f"vscode-{version}/{server_archive}", mode="r:gz")
     for i in server.getmembers():
         p = i.name.find("/")
         if p == -1:
@@ -108,7 +149,7 @@ def make_remote(
 
     for vsix_name in remote_extension:
 
-        vsix_file = find_vsix(download_dir / f"vscode-extensions-{version}", vsix_name, arch)
+        vsix_file = find_vsix(output_dir / f"vscode-extensions-{version}", vsix_name, arch)
 
         # directory name contains the version and is lowercase
         vsix_dir = vsix_file.with_suffix("").name.lower()
@@ -131,14 +172,10 @@ def make_remote(
 
     tar_remote.close()
 
-    p = Path(tar_remote.name)
-    print(f"written: \033[1;32m{p.name}\033[0m")
+    digest_file.write_text(digest_hexvalue)
 
-    # print(f"Compressing...")
-    # subprocess.run(["xz", p.absolute()])
-
+    print(f"written: \033[1;32m{tar_file.name}\033[0m")
     print("Done")
-    print()
 
 
 def read_conf(conf_file):
@@ -161,7 +198,7 @@ def read_conf(conf_file):
     return conf
 
 
-def process_conf_file(download_dir, conf_file):
+def process_conf_file(output_dir, conf_file):
     """Use a configuration file to build the host and remote archives."""
 
     config = read_conf(conf_file)
@@ -169,7 +206,7 @@ def process_conf_file(download_dir, conf_file):
     commit = None
     version = None
 
-    for i in download_dir.glob("vscode-*"):
+    for i in output_dir.glob("vscode-*"):
         version_file = i / "version"
         if i.is_dir() and version_file.is_file():
             if commit or version:
@@ -191,28 +228,24 @@ def process_conf_file(download_dir, conf_file):
     common = config.get("vscode:common", set())
 
     if "vscode:host" in config:
-        make_host(download_dir, version, common.union(config["vscode:host"]))
+        make_host(output_dir, version, common.union(config["vscode:host"]))
 
     if "vscode:remote" in config:
-        make_remote(
-            download_dir,
-            version,
-            commit,
-            common.union(config["vscode:remote"]),
-            "x86_64",
-        )
-        make_remote(
-            download_dir,
-            version,
-            commit,
-            common.union(config["vscode:remote"]),
-            "aarch64",
-        )
+        # archive for Linux remote (with glibc)
+        remote_extensions = common.union(config["vscode:remote"])
+        make_remote(output_dir, version, commit, remote_extensions, "x86_64")
+        make_remote(output_dir, version, commit, remote_extensions, "aarch64")
+
+    if "vscode:alpine" in config:
+        # archive for AlpineLinux remote (with musl-libc)
+        remote_extensions = common.union(config["vscode:alpine"])
+        make_remote(output_dir, version, commit, remote_extensions, "alpine-x86_64")
+        make_remote(output_dir, version, commit, remote_extensions, "alpine-aarch64")
 
 
 def main():
     parser = argparse.ArgumentParser(description="Make archive for Visual Studio Code offline installation")
-    parser.add_argument("-d", "--download-dir", help="download dir", default=".")
+    parser.add_argument("-o", "--output-dir", help="output dir", default=".")
     parser.add_argument("--vscode-version", help="Visual Studio Code version")
     parser.add_argument("--commit-id", help="Visual Studio Code commit id")
     parser.add_argument("-H", "--host-extension", help="Host extension", action="append")
@@ -223,14 +256,14 @@ def main():
     args = parser.parse_args()
 
     if args.f:
-        return process_conf_file(Path(args.download_dir), args.f)
+        return process_conf_file(Path(args.output_dir), args.f)
 
     if args.host_extension:
-        make_host(Path(args.download_dir), args.vscode_version, set(args.host_extension))
+        make_host(Path(args.output_dir), args.vscode_version, set(args.host_extension))
 
     if args.remote_extension:
         make_remote(
-            Path(args.download_dir),
+            Path(args.output_dir),
             args.vscode_version,
             args.commit_id,
             set(args.remote_extension),

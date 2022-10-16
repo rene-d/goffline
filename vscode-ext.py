@@ -147,10 +147,11 @@ class Extension:
         for result in r["results"]:
             for extension in result["extensions"]:
                 vsix = self._get_download(extension)
-                if "Extension Packs" in extension["categories"]:
-                    self.packs.update(vsix)
+                if vsix:
+                    if "Extension Packs" in extension["categories"]:
+                        self.packs.update(vsix)
 
-                self.all_extensions.update(vsix)
+                    self.all_extensions.update(vsix)
 
     def _query(self, slugs):
         """
@@ -206,33 +207,59 @@ class Extension:
         name = extension["publisher"]["publisherName"] + "." + extension["extensionName"]
 
         def filter_version(extension, platform):
+            has_target_platform = set()
+
             for version in extension["versions"]:
+                # sanity check
                 if version["flags"] != "validated" and version["flags"] != "none":
+                    print("flags should be 'validated' or 'none'")
                     print(json.dumps(version, indent=2))
                     exit()
-                if version.get("targetPlatform", platform) != platform:
-                    continue
+
+                # do not use pre-release version
                 v = get_property(version, "Microsoft.VisualStudio.Code.PreRelease")
                 if v == "true":
                     continue
+
+                # we have to match the engine version
                 v = get_property(version, "Microsoft.VisualStudio.Code.Engine")
-                if v and engine_match(v, self.engine):
-                    yield version
+                if not (v and engine_match(v, self.engine)):
+                    continue
 
-        def find_version(extension, platform):
+                if version.get("targetPlatform") != None:
+                    has_target_platform.add(version["version"])
+
+                # we have to match the platform if asked and specified for the version
+                if version["version"] in has_target_platform and platform and version.get("targetPlatform") != platform:
+                    continue
+
+                yield version
+
+        def find_latest_version(extension, platform):
             versions = filter_version(extension, platform)
-
             versions = sorted(versions, key=lambda v: version_serial(v["version"]))
-            version = versions[-1]
+            if versions:
+                return versions[-1]
 
-            asset_uri = version["assetUri"] + "/Microsoft.VisualStudio.Services.VSIXPackage"
-            target_platform = version.get("targetPlatform")
+        def find_version_vsix(extension, platform):
+            version = find_latest_version(extension, platform)
 
             if name == "vadimcn.vscode-lldb":
+                if "alpine" in platform:
+                    return
+
                 os, arch = platform.split("-")
-                arch = {"x64": "x86_64", "arm64": "aarch64"}[arch]
+                # cf. extension/package.json of the generic extension
+                arch = {"x64": "x86_64", "arm64": "aarch64"}.get(arch)
                 asset_uri = f"https://github.com/vadimcn/vscode-lldb/releases/download/v{version['version']}/codelldb-{arch}-{os}.vsix"
                 target_platform = platform
+
+            else:
+                if not version:
+                    print(f"missing {platform} for {name}")
+                    return
+                asset_uri = version["assetUri"] + "/Microsoft.VisualStudio.Services.VSIXPackage"
+                target_platform = version.get("targetPlatform")
 
             if target_platform:
                 vsix = name + "-" + target_platform + "-" + version["version"] + ".vsix"
@@ -253,8 +280,10 @@ class Extension:
             return vsix
 
         vsix = set()
-        vsix.add(find_version(extension, "linux-x64"))
-        vsix.add(find_version(extension, "linux-arm64"))
+        vsix.add(find_version_vsix(extension, "linux-x64"))
+        vsix.add(find_version_vsix(extension, "linux-arm64"))
+        vsix.add(find_version_vsix(extension, "alpine-x64"))
+        vsix.add(find_version_vsix(extension, "alpine-arm64"))
         return vsix
 
 
@@ -326,7 +355,7 @@ def check_local(slugs):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("-v", "--verbose", help="verbose and debug info", action="store_true")
-    parser.add_argument("-o", "--output", help="output dir", type=Path, default=".")
+    parser.add_argument("-o", "--output-dir", help="output dir", type=Path, default=".")
     parser.add_argument("-e", "--engine", help="engine version", default="current")
     parser.add_argument("-f", "--conf", help="conf file", type=Path)
     parser.add_argument("--check-local", help=argparse.SUPPRESS, action="store_true")
@@ -351,10 +380,10 @@ def main():
     if args.engine == "latest":
         args.engine, _ = vscode_latest_version()
     elif args.engine == "current":
-        args.engine = (args.output / "vscode-version").read_text().strip()
+        args.engine = (args.output_dir / "vscode-version").read_text().strip()
         print(f"Using vscode {args.engine}")
 
-    dest_dir = args.output / f"vscode-extensions-{args.engine}"
+    dest_dir = args.output_dir / f"vscode-extensions-{args.engine}"
     dest_dir.mkdir(exist_ok=True, parents=True)
 
     e = Extension(args.engine, args.verbose)

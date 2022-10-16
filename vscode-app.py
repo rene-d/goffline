@@ -37,7 +37,7 @@ def main():
     """Main function."""
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("-o", "--output", help="output dir", type=Path, default=".")
+    parser.add_argument("-o", "--output-dir", help="output dir", type=Path, default=".")
     parser.add_argument("-v", "--version", help="version", default="latest")
     parser.add_argument("--channel", help="channel", default="stable")
     parser.add_argument("-f", "--conf", help="conf file", type=Path, default="config.txt")
@@ -74,24 +74,32 @@ def main():
     print(f"Found commit: \033[1;32m{commit_id}\033[0m")
 
     # save the version (to communicate with other scripts)
-    args.output.mkdir(exist_ok=True, parents=True)
-    (args.output / "vscode-version").write_text(version)
+    args.output_dir.mkdir(exist_ok=True, parents=True)
+    (args.output_dir / "vscode-version").write_text(version)
 
     # prepare the version dependant output directory
-    dest_dir = args.output / f"vscode-{version}"
+    dest_dir = args.output_dir / f"vscode-{version}"
     dest_dir.mkdir(exist_ok=True, parents=True)
 
     # save the version information
     (dest_dir / "version").write_text(f"version={version}\ncommit={commit_id}\nchannel={channel}\n")
 
-    # download windows, linux and vscode-server for both x86_64 and aarch64 architectures
+    # the following mess is found here:
+    # https://github.com/microsoft/vscode/blob/61532aeb5643822cf46cb8ccf0301024ad4af483/cli/src/update_service.rs#L211
+
     urls = [
+        # cli for Windows and Linux
         f"https://update.code.visualstudio.com/{version}/win32-x64-archive/{channel}",
         f"https://update.code.visualstudio.com/{version}/linux-x64/{channel}",
-        f"https://update.code.visualstudio.com/{version}/linux-deb-x64/{channel}",
+        # f"https://update.code.visualstudio.com/{version}/linux-deb-x64/{channel}",
+        # headless (server) for Linux (glibc)
         f"https://update.code.visualstudio.com/commit:{commit_id}/server-linux-x64/{channel}",
         f"https://update.code.visualstudio.com/commit:{commit_id}/server-linux-arm64/{channel}",
+        # headless (server) for Alpine Linux (musl-libc)
+        f"https://update.code.visualstudio.com/commit:{commit_id}/server-linux-alpine/{channel}",
+        f"https://update.code.visualstudio.com/commit:{commit_id}/server-alpine-arm64/{channel}",
     ]
+
     download(dest_dir, urls)
 
 
