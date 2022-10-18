@@ -427,6 +427,9 @@ def main():
 
     a = GogoGadget(args.name, go_bins, go_mods, args.output, args.tag, args.compression)
 
+    logging.debug(f"GOVERSION {a.GOVERSION}")
+    logging.debug(f"GOFFLINE_VERSION {a.GOFFLINE_VERSION}")
+
     a.download_bins()
     a.download_mods()
 

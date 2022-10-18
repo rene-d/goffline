@@ -9,7 +9,7 @@ import re
 from dateutil.parser import parse as parsedate
 
 
-def download(dest_dir: Path, urls):
+def download(dest_dir: Path, urls, version):
     """Download assets."""
 
     session = requests.Session()
@@ -26,21 +26,32 @@ def download(dest_dir: Path, urls):
             r = session.get(real_url)
             file.write_bytes(r.content)
 
+            if int(r.headers["Content-Length"]) != file.stat().st_size:
+                file.unlink()
+                print(f"download problem {url}")
+                exit(2)
+
             url_date = parsedate(r.headers["Last-Modified"])
             mtime = round(url_date.timestamp() * 1_000_000_000)
             os.utime(file, ns=(mtime, mtime))
         else:
             print(f"already downloaded: {name}")
 
+        # the linux version name is a mess
+        if re.match(r"code\-(\w+)\-x64\-(\d+)\.tar\.gz", name):
+            symlink = dest_dir / f"code-linux-x64-{version}.tar.gz"
+            if symlink.is_symlink() or symlink.exists():
+                symlink.unlink()
+            symlink.symlink_to(file.name)
+
 
 def main():
     """Main function."""
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("-o", "--output-dir", help="output dir", type=Path, default=".")
+    parser.add_argument("-d", "--dest-dir", help="output dir", type=Path, default=".")
     parser.add_argument("-v", "--version", help="version", default="latest")
     parser.add_argument("--channel", help="channel", default="stable")
-    parser.add_argument("-f", "--conf", help="conf file", type=Path, default="config.txt")
     args = parser.parse_args()
 
     ###############################################################################
@@ -74,11 +85,11 @@ def main():
     print(f"Found commit: \033[1;32m{commit_id}\033[0m")
 
     # save the version (to communicate with other scripts)
-    args.output_dir.mkdir(exist_ok=True, parents=True)
-    (args.output_dir / "vscode-version").write_text(version)
+    args.dest_dir.mkdir(exist_ok=True, parents=True)
+    (args.dest_dir / "vscode-version").write_text(version)
 
     # prepare the version dependant output directory
-    dest_dir = args.output_dir / f"vscode-{version}"
+    dest_dir = args.dest_dir / f"vscode-{version}"
     dest_dir.mkdir(exist_ok=True, parents=True)
 
     # save the version information
@@ -100,7 +111,7 @@ def main():
         f"https://update.code.visualstudio.com/commit:{commit_id}/server-alpine-arm64/{channel}",
     ]
 
-    download(dest_dir, urls)
+    download(dest_dir, urls, version)
 
 
 if __name__ == "__main__":

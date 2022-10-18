@@ -135,7 +135,7 @@ class Extension:
                 mtime = round(url_date.timestamp() * 1_000_000_000)
                 os.utime(vsix, ns=(mtime, mtime))
             else:
-                print(f"already downloaded: {vsix}")
+                print(f"already downloaded: {vsix.name}")
 
     def _get_downloads(self, slugs):
         """Build the extension list to download."""
@@ -355,16 +355,16 @@ def check_local(slugs):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("-v", "--verbose", help="verbose and debug info", action="store_true")
-    parser.add_argument("-o", "--output-dir", help="output dir", type=Path, default=".")
+    parser.add_argument("-d", "--dest-dir", help="output dir", type=Path, default=".")
     parser.add_argument("-e", "--engine", help="engine version", default="current")
-    parser.add_argument("-f", "--conf", help="conf file", type=Path)
+    parser.add_argument("-c", "--config", help="conf file", type=Path)
     parser.add_argument("--check-local", help=argparse.SUPPRESS, action="store_true")
     parser.add_argument("slugs", help="extension identifier", nargs="*")
     args = parser.parse_args()
 
-    if args.conf:
+    if args.config:
         in_section = False
-        for i in args.conf.read_text().splitlines():
+        for i in args.config.read_text().splitlines():
             i = i.strip()
             if not i or i.startswith("#"):
                 continue
@@ -380,10 +380,10 @@ def main():
     if args.engine == "latest":
         args.engine, _ = vscode_latest_version()
     elif args.engine == "current":
-        args.engine = (args.output_dir / "vscode-version").read_text().strip()
+        args.engine = (args.dest_dir / "vscode-version").read_text().strip()
         print(f"Using vscode {args.engine}")
 
-    dest_dir = args.output_dir / f"vscode-extensions-{args.engine}"
+    dest_dir = args.dest_dir / f"vscode-extensions-{args.engine}"
     dest_dir.mkdir(exist_ok=True, parents=True)
 
     e = Extension(args.engine, args.verbose)
