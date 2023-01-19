@@ -55,6 +55,9 @@ def version_serial(version):
         r = v[2].split("-", maxsplit=1)
         t = (int(v[0]), int(v[1]), int(r[0]), r[1])
         return t
+    elif "x" in v[2]:
+        t = (int(v[0]), int(v[1]), 0)
+        return t
     else:
         return tuple(map(int, v))
 
@@ -282,8 +285,12 @@ class Extension:
         vsix = set()
         vsix.add(find_version_vsix(extension, "linux-x64"))
         vsix.add(find_version_vsix(extension, "linux-arm64"))
+        vsix.add(find_version_vsix(extension, "linux-armhf"))
         vsix.add(find_version_vsix(extension, "alpine-x64"))
         vsix.add(find_version_vsix(extension, "alpine-arm64"))
+        vsix.add(find_version_vsix(extension, "win32-x64"))
+        vsix.add(find_version_vsix(extension, "win32-ia32"))
+        vsix.add(find_version_vsix(extension, "win32-arm64"))
         return vsix
 
 
