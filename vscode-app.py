@@ -16,6 +16,8 @@ def download(dest_dir: Path, urls, version):
 
     for url in urls:
         r = session.head(url)
+        if "Location" not in r.headers:
+            continue
         real_url = r.headers["Location"]
         name = Path(real_url).name
         file = dest_dir / name
