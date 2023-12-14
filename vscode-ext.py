@@ -63,7 +63,6 @@ def version_serial(version):
 
 
 def engine_match(pattern, engine):
-
     if pattern == "*":
         return True
 
@@ -206,7 +205,6 @@ class Extension:
         return r
 
     def _get_download(self, extension):
-
         name = extension["publisher"]["publisherName"] + "." + extension["extensionName"]
 
         def filter_version(extension, platform):
@@ -365,9 +363,20 @@ def main():
     parser.add_argument("-d", "--dest-dir", help="output dir", type=Path, default=".")
     parser.add_argument("-e", "--engine", help="engine version", default="current")
     parser.add_argument("-c", "--config", help="conf file", type=Path)
+    parser.add_argument("--local", help="from local VS Code", action="store_true")
     parser.add_argument("--check-local", help=argparse.SUPPRESS, action="store_true")
     parser.add_argument("slugs", help="extension identifier", nargs="*")
     args = parser.parse_args()
+
+    if args.local:
+        args.slugs.extend(subprocess.check_output(["code", "--list-extensions"]).decode().splitlines())
+
+    for slug in args.slugs:
+        if slug.startswith("@"):
+            f = Path(slug[1:])
+            args.slugs.remove(slug)
+            if f.is_file():
+                args.slugs.extend(f.read_text().splitlines())
 
     if args.config:
         in_section = False
