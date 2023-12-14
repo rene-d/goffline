@@ -68,7 +68,6 @@ def make_host(dest_dir: Path, version: str, host_extensions: Set[str]):
 
     with ZipFile(zip_file, "w") as zip_host:
         for vsix_name in host_extensions:
-
             vsix_file = find_vsix(dest_dir / f"vscode-extensions-{version}", vsix_name)
 
             # directory name contains the version and is lowercase
@@ -132,7 +131,7 @@ def make_remote(
                     f"\033[1;33mRemote\033[0m extensions archive for arch \033[1;33m{arch}\033[0m \033[1;32m{tar_file.name}\033[0m is up to date"
                 )
                 return
-        digest_file.unlink()
+            digest_file.unlink()
 
     print(f"Making \033[1;33mremote\033[0m extensions archive for arch \033[1;33m{arch}\033[0m")
 
@@ -152,7 +151,6 @@ def make_remote(
     server.close()
 
     for vsix_name in remote_extension:
-
         vsix_file = find_vsix(dest_dir / f"vscode-extensions-{version}", vsix_name, arch)
 
         # directory name contains the version and is lowercase
