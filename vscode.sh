@@ -4,14 +4,16 @@
 set -Eeuo pipefail
 
 dest_dir=$PWD/dl
-config=${1:-config.txt}
-go_tag=
+config_file=${1:-config.txt}
+opt_local=
+opt_gotag=
 
 while [[ ${1-} ]]; do
     case $1 in
         -d|--dest-dir) dest_dir=$(cd $2; pwd) ; shift ;;
-        -c|--config) config=$2 ; shift ;;
-        --go-tag) go_tag=$2 ; shift ;;
+        -c|--config) config_file=$2 ; shift ;;
+        -l|--local) opt_local=1 ;;
+        --go-tag) opt_gotag=$2 ; shift ;;
         *) echo "Unknown option $1" ; exit 2 ;;
     esac
     shift
@@ -23,14 +25,20 @@ $(dirname $0)/vscode-app.py --dest-dir ${dest_dir}
 
 ###############################################################################
 echo -e "\n\033[1;34m🍻 Downloading extenions\033[0m"
-$(dirname $0)/vscode-ext.py --dest-dir ${dest_dir} --config $config
+if [[ $opt_local ]]; then
+    $(dirname $0)/vscode-ext.py --dest-dir ${dest_dir} --local
+else
+    $(dirname $0)/vscode-ext.py --dest-dir ${dest_dir} --config $config_file
+fi
 
 ###############################################################################
-echo -e "\n\033[1;34m🍻 Packaging extenions and vscode-server\033[0m"
-$(dirname $0)/vscode-dist.py --dest-dir ${dest_dir} --config $config
+if [[ ! $opt_local ]]; then
+    echo -e "\n\033[1;34m🍻 Packaging extenions and vscode-server\033[0m"
+    $(dirname $0)/vscode-dist.py --dest-dir ${dest_dir} --config $config_file
+fi
 
 ###############################################################################
-if [[ $go_tag ]]; then
+if [[ $opt_gotag ]]; then
     echo -e "\n\033[1;34m🍻 Download Go extension tools\033[0m"
-    $(dirname $0)/golang.sh --dest-dir ${dest_dir} -- --name vscode --tag $go_tag --vscode
+    $(dirname $0)/golang.sh --dest-dir ${dest_dir} -- --name vscode --tag $opt_gotag --vscode
 fi

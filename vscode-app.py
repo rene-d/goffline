@@ -105,6 +105,7 @@ def main():
         f"https://update.code.visualstudio.com/{version}/win32-x64-archive/{channel}",
         f"https://update.code.visualstudio.com/{version}/linux-x64/{channel}",
         # f"https://update.code.visualstudio.com/{version}/linux-deb-x64/{channel}",
+        f"https://code.visualstudio.com/sha/download?build={channel}&os=linux-deb-x64",
         # headless (server) for Linux (glibc)
         f"https://update.code.visualstudio.com/commit:{commit_id}/server-linux-x64/{channel}",
         f"https://update.code.visualstudio.com/commit:{commit_id}/server-linux-arm64/{channel}",
