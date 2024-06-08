@@ -17,6 +17,7 @@ def download(dest_dir: Path, urls, version):
     for url in urls:
         r = session.head(url)
         if "Location" not in r.headers:
+            print(r)
             continue
         real_url = r.headers["Location"]
         name = Path(real_url).name
@@ -98,20 +99,28 @@ def main():
     (dest_dir / "version").write_text(f"version={version}\ncommit={commit_id}\nchannel={channel}\n")
 
     # the following mess is found here:
-    # https://github.com/microsoft/vscode/blob/61532aeb5643822cf46cb8ccf0301024ad4af483/cli/src/update_service.rs#L211
+    # https://github.com/microsoft/vscode/blob/master/cli/src/update_service.rs#L224
 
+    # https://code.visualstudio.com/docs/supporting/FAQ
     urls = [
-        # cli for Windows and Linux
+        # archive for Windows and Linux
         f"https://update.code.visualstudio.com/{version}/win32-x64-archive/{channel}",
         f"https://update.code.visualstudio.com/{version}/linux-x64/{channel}",
-        # f"https://update.code.visualstudio.com/{version}/linux-deb-x64/{channel}",
-        f"https://code.visualstudio.com/sha/download?build={channel}&os=linux-deb-x64",
+        f"https://update.code.visualstudio.com/{version}/linux-deb-x64/{channel}",
+        f"https://update.code.visualstudio.com/{version}/linux-deb-arm64/{channel}",
         # headless (server) for Linux (glibc)
-        f"https://update.code.visualstudio.com/commit:{commit_id}/server-linux-x64/{channel}",
-        f"https://update.code.visualstudio.com/commit:{commit_id}/server-linux-arm64/{channel}",
+        f"https://update.code.visualstudio.com/{version}/server-linux-x64/{channel}",
+        f"https://update.code.visualstudio.com/{version}/server-linux-arm64/{channel}",
         # headless (server) for Alpine Linux (musl-libc)
-        f"https://update.code.visualstudio.com/commit:{commit_id}/server-linux-alpine/{channel}",
-        f"https://update.code.visualstudio.com/commit:{commit_id}/server-alpine-arm64/{channel}",
+        f"https://update.code.visualstudio.com/{version}/server-linux-alpine/{channel}",
+        f"https://update.code.visualstudio.com/{version}/server-alpine-arm64/{channel}",
+        # cli for Linux
+        f"https://update.code.visualstudio.com/{version}/cli-linux-x64/{channel}",
+        f"https://update.code.visualstudio.com/{version}/cli-linux-arm64/{channel}",
+        f"https://update.code.visualstudio.com/{version}/cli-linux-armhf/{channel}",
+        # cli for Alpine
+        f"https://update.code.visualstudio.com/{version}/cli-alpine-arm64/{channel}",
+        f"https://update.code.visualstudio.com/{version}/cli-alpine-x64/{channel}",
     ]
 
     download(dest_dir, urls, version)

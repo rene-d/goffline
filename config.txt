@@ -7,8 +7,47 @@ golang.org/x/term
 
 # extensions that should be packaged for the host
 [vscode:host]
-ms-vscode-remote.remote-ssh
+# ms-vscode-remote.remote-ssh
 
 # extensions that should be packaged for the remote
 [vscode:remote]
+# golang.go
+
+[vscode]
+bierner.markdown-mermaid
+cschlosser.doxdocgen
+davidanson.vscode-markdownlint
+dotjoshjohnson.xml
+eamodio.gitlens
+goessner.mdmath
 golang.go
+ms-azuretools.vscode-docker
+ms-ceintl.vscode-language-pack-fr
+vscode-icons-team.vscode-icons
+ms-python.black-formatter
+ms-python.debugpy
+ms-python.isort
+ms-python.python
+ms-python.vscode-pylance
+ms-toolsai.jupyter
+ms-toolsai.jupyter-keymap
+ms-toolsai.jupyter-renderers
+ms-toolsai.vscode-jupyter-cell-tags
+ms-toolsai.vscode-jupyter-slideshow
+ms-vscode-remote.remote-containers
+ms-vscode-remote.remote-ssh
+ms-vscode-remote.remote-ssh-edit
+ms-vscode.cmake-tools
+ms-vscode.cpptools
+ms-vscode.cpptools-extension-pack
+ms-vscode.cpptools-themes
+ms-vscode.remote-explorer
+ms-vscode.wasm-dwarf-debugging
+pest.pest-ide-tools
+redhat.vscode-xml
+rust-lang.rust-analyzer
+tamasfe.even-better-toml
+twxs.cmake
+vadimcn.vscode-lldb
+vscodevim.vim
+waderyan.gitblame

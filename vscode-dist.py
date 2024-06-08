@@ -189,7 +189,7 @@ def read_conf(conf_file):
         if not i or i.startswith("#"):
             continue
         if i.startswith("["):
-            in_section = re.match("^\[(.*)\]$", i)
+            in_section = re.match(r"^\[(.*)\]$", i)
             if in_section:
                 in_section = in_section.group(1)
                 conf[in_section] = set()
