@@ -26,9 +26,9 @@ fi
 
 arch=$(ssh $target uname -m)
 if [ $arch = aarch64 ] ; then
-    arch=arm64
+    arch=linux-arm64
 elif [ $arch = x86_64 ] ; then
-    arch=x64
+    arch=linux-x64
 else
     echo 2> "Unknown arch: $arch"
     exit 2
@@ -37,25 +37,24 @@ fi
 echo "Visual Studio Code $version cli and headless server (commit $commit, $arch/$channel)"
 
 echo "Installing cli and headless server"
-scp vscode-$version/vscode_cli_linux_${arch}_cli.tar.gz $target:
-scp vscode-$version/vscode-server-linux-${arch}.tar.gz $target:
+scp vscode-$version/vscode_cli_${arch/-/_}_cli.tar.gz $target:
+scp vscode-$version/vscode-server-$arch.tar.gz $target:
 
 cat <<EOF | ssh $target sh
 set -e
 mkdir -p .vscode-server/cli/servers/$Channel-$commit/server
 mkdir -p .vscode-server/bin
-tar -C .vscode-server --transform='s|code|code-$commit|' -xf vscode_cli_linux_${arch}_cli.tar.gz
-tar -C .vscode-server/cli/servers/$Channel-$commit/server --strip-components=1 -xf vscode-server-linux-${arch}.tar.gz
+tar -C .vscode-server --transform='s|code|code-$commit|' --no-same-owner -xf vscode_cli_${arch/-/_}_cli.tar.gz
+tar -C .vscode-server/cli/servers/$Channel-$commit/server --strip-components=1 --no-same-owner -xf vscode-server-$arch.tar.gz
 ln -rsnf .vscode-server/cli/servers/$Channel-$commit/server .vscode-server/bin/$commit
-rm vscode_cli_linux_${arch}_cli.tar.gz vscode-server-linux-${arch}.tar.gz
+rm vscode_cli_${arch/-/_}_cli.tar.gz vscode-server-$arch.tar.gz
 EOF
 
 extensions=(
     MS-CEINTL.vscode-language-pack-fr
-    ms-vscode.cpptools-linux-$arch
+    ms-vscode.cpptools-$arch
     ms-vscode.cpptools-themes
     twxs.cmake
-    eamodio.gitlens
     waderyan.gitblame
     DavidAnson.vscode-markdownlint
     bierner.markdown-mermaid
@@ -63,6 +62,7 @@ extensions=(
     DotJoshJohnson.xml
     goessner.mdmath
 )
+# eamodio.gitlens
 
 for ext in ${extensions[@]}
 do
